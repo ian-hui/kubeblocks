@@ -1,5 +1,3 @@
-# this file will be removed in v0.10.
----
 # cos is a storage provider for [Tencent Cloud Object Storage](https://cloud.tencent.com/product/cos)
 apiVersion: storage.kubeblocks.io/v1alpha1
 kind: StorageProvider
