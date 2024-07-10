@@ -127,7 +127,7 @@ type LegacyRenderedTemplateSpec struct {
 }
 
 type ComponentParameters struct {
-	// Defines the unique identifier of the config file name.
+	// Specifies the config file name.
 	//
 	// It must be a string of maximum 63 characters, and can only include lowercase alphanumeric characters,
 	// hyphens, and periods.
@@ -186,6 +186,7 @@ type ComponentConfigSpec struct {
 	// Some of these configuration files may support dynamic modification and reloading without requiring
 	// a pod restart.
 	//
+	// If empty, all configuration files in the ConfigMap do not support parameter update, but they can be modified directly through configmap.
 	//
 	// +patchMergeKey=name
 	// +patchStrategy=merge,retainKeys
