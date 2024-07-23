@@ -455,7 +455,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err = (&configuration.ReconfigureReconciler{
+		if err = (&configuration.ParameterReconciler{
 			Client:   client,
 			Scheme:   mgr.GetScheme(),
 			Recorder: mgr.GetEventRecorderFor("reconfigure-controller"),
