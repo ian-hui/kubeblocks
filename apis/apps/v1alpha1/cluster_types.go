@@ -558,8 +558,6 @@ type ShardingSpec struct {
 }
 
 // ClusterComponentSpec defines the specification of a Component within a Cluster.
-// TODO +kubebuilder:validation:XValidation:rule="!has(oldSelf.componentDefRef) || has(self.componentDefRef)", message="componentDefRef is required once set"
-// TODO +kubebuilder:validation:XValidation:rule="!has(oldSelf.componentDef) || has(self.componentDef)", message="componentDef is required once set"
 type ClusterComponentSpec struct {
 	// Specifies the Component's name.
 	// It's part of the Service DNS name and must comply with the IANA service naming rule.
@@ -568,22 +566,19 @@ type ClusterComponentSpec struct {
 	//
 	// +kubebuilder:validation:MaxLength=22
 	// +kubebuilder:validation:Pattern:=`^[a-z]([a-z0-9\-]*[a-z0-9])?$`
-	// TODO +kubebuilder:validation:XValidation:rule="self == oldSelf",message="name is immutable"
 	// +optional
 	Name string `json:"name"`
 
 	// References a ClusterComponentDefinition defined in the `clusterDefinition.spec.componentDef` field.
 	// Must comply with the IANA service naming rule.
 	//
-	// Deprecated since v0.9,
-	// because defining Components in `clusterDefinition.spec.componentDef` field has been deprecated.
+	// Deprecated since v0.9, because defining Components in `clusterDefinition.spec.componentDef` field has been deprecated.
 	// This field is replaced by the `componentDef` field, use `componentDef` instead.
 	// This field is maintained for backward compatibility and its use is discouraged.
 	// Existing usage should be updated to the current preferred approach to avoid compatibility issues in future releases.
 	//
 	// +kubebuilder:validation:MaxLength=22
 	// +kubebuilder:validation:Pattern:=`^[a-z]([a-z0-9\-]*[a-z0-9])?$`
-	// TODO +kubebuilder:validation:XValidation:rule="self == oldSelf",message="componentDefRef is immutable"
 	// +kubebuilder:deprecatedversion:warning="This field has been deprecated since 0.9.0, consider using the ComponentDef instead"
 	// +optional
 	ComponentDefRef string `json:"componentDefRef,omitempty"`
@@ -1571,16 +1566,6 @@ func (r ClusterSpec) GetShardingByName(shardingName string) *ShardingSpec {
 		}
 	}
 	return nil
-}
-
-// GetComponentDefRefName gets the name of referenced component definition.
-func (r ClusterSpec) GetComponentDefRefName(componentName string) string {
-	for _, component := range r.ComponentSpecs {
-		if componentName == component.Name {
-			return component.ComponentDefRef
-		}
-	}
-	return ""
 }
 
 // GetMessage gets message map deep copy object.

@@ -155,15 +155,11 @@ func (r *ConfigurationReconciler) runTasks(taskCtx TaskContext, tasks []Task) (e
 		configuration = taskCtx.configuration
 	)
 
-	if len(taskCtx.fetcher.ComponentObj.Spec.CompDef) == 0 {
-		// build synthesized component for generated component
-		synthesizedComp, err = component.BuildSynthesizedComponentWrapper(taskCtx.reqCtx, r.Client, taskCtx.fetcher.ClusterObj, taskCtx.fetcher.ClusterComObj)
-	} else {
-		// build synthesized component for native component
-		synthesizedComp, err = component.BuildSynthesizedComponent(taskCtx.reqCtx, r.Client, taskCtx.fetcher.ClusterObj, taskCtx.fetcher.ComponentDefObj, taskCtx.fetcher.ComponentObj)
-		if err == nil {
-			err = buildTemplateVars(taskCtx.reqCtx.Ctx, r.Client, taskCtx.fetcher.ComponentDefObj, synthesizedComp)
-		}
+	// build synthesized component for component
+	synthesizedComp, err = component.BuildSynthesizedComponent(ctx, r.Client,
+		taskCtx.fetcher.ClusterObj, taskCtx.fetcher.ComponentDefObj, taskCtx.fetcher.ComponentObj)
+	if err == nil {
+		err = buildTemplateVars(taskCtx.reqCtx.Ctx, r.Client, taskCtx.fetcher.ComponentDefObj, synthesizedComp)
 	}
 	if err != nil {
 		return err

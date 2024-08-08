@@ -30,7 +30,6 @@ import (
 	appsv1beta1 "github.com/apecloud/kubeblocks/apis/apps/v1beta1"
 	"github.com/apecloud/kubeblocks/pkg/configuration/core"
 	"github.com/apecloud/kubeblocks/pkg/controller/component"
-	intctrlutil "github.com/apecloud/kubeblocks/pkg/controllerutil"
 	testapps "github.com/apecloud/kubeblocks/pkg/testutil/apps"
 	testutil "github.com/apecloud/kubeblocks/pkg/testutil/k8s"
 )
@@ -81,14 +80,10 @@ var _ = Describe("ConfigEnvFrom test", func() {
 
 	Context("test config template inject envfrom", func() {
 		It("should inject success", func() {
-			reqCtx := intctrlutil.RequestCtx{
-				Ctx: ctx,
-				Log: logger,
-			}
 			comp, err := component.BuildComponent(cluster, &cluster.Spec.ComponentSpecs[0], nil, nil)
 			Expect(err).Should(Succeed())
 
-			synthesizeComp, err := component.BuildSynthesizedComponent(reqCtx, testCtx.Cli, cluster, compDef, comp)
+			synthesizeComp, err := component.BuildSynthesizedComponent(testCtx.Ctx, testCtx.Cli, cluster, compDef, comp)
 			Expect(err).Should(Succeed())
 
 			podSpec := &corev1.PodSpec{
@@ -108,8 +103,8 @@ var _ = Describe("ConfigEnvFrom test", func() {
 				testutil.WithCreateReturned(testutil.WithCreatedSucceedResult(), testutil.WithAnyTimes()),
 			)
 
-			Expect(injectTemplateEnvFrom(cluster, synthesizeComp, podSpec, k8sMockClient.Client(), reqCtx.Ctx, nil)).ShouldNot(Succeed())
-			Expect(injectTemplateEnvFrom(cluster, synthesizeComp, podSpec, k8sMockClient.Client(), reqCtx.Ctx, nil)).Should(Succeed())
+			Expect(injectTemplateEnvFrom(cluster, synthesizeComp, podSpec, k8sMockClient.Client(), testCtx.Ctx, nil)).ShouldNot(Succeed())
+			Expect(injectTemplateEnvFrom(cluster, synthesizeComp, podSpec, k8sMockClient.Client(), testCtx.Ctx, nil)).Should(Succeed())
 		})
 
 		It("should SyncEnvConfigmap success", func() {

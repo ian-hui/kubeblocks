@@ -4070,8 +4070,7 @@ string
 <em>(Optional)</em>
 <p>References a ClusterComponentDefinition defined in the <code>clusterDefinition.spec.componentDef</code> field.
 Must comply with the IANA service naming rule.</p>
-<p>Deprecated since v0.9,
-because defining Components in <code>clusterDefinition.spec.componentDef</code> field has been deprecated.
+<p>Deprecated since v0.9, because defining Components in <code>clusterDefinition.spec.componentDef</code> field has been deprecated.
 This field is replaced by the <code>componentDef</code> field, use <code>componentDef</code> instead.
 This field is maintained for backward compatibility and its use is discouraged.
 Existing usage should be updated to the current preferred approach to avoid compatibility issues in future releases.</p>

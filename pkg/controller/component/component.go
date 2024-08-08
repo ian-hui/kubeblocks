@@ -25,7 +25,6 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -34,7 +33,6 @@ import (
 	"github.com/apecloud/kubeblocks/pkg/constant"
 	"github.com/apecloud/kubeblocks/pkg/controller/builder"
 	"github.com/apecloud/kubeblocks/pkg/controller/scheduling"
-	intctrlutil "github.com/apecloud/kubeblocks/pkg/controllerutil"
 )
 
 func FullName(clusterName, compName string) string {
@@ -118,61 +116,6 @@ func BuildComponent(cluster *appsv1alpha1.Cluster, compSpec *appsv1alpha1.Cluste
 		compBuilder.SetServices(compSpec.Services)
 	}
 	return compBuilder.GetObject(), nil
-}
-
-func getOrBuildComponentDefinition(ctx context.Context, cli client.Reader,
-	clusterDef *appsv1alpha1.ClusterDefinition,
-	cluster *appsv1alpha1.Cluster,
-	clusterCompSpec *appsv1alpha1.ClusterComponentSpec) (*appsv1alpha1.ComponentDefinition, error) {
-	if len(cluster.Spec.ClusterDefRef) > 0 && len(clusterCompSpec.ComponentDefRef) > 0 && len(clusterCompSpec.ComponentDef) == 0 {
-		return nil, fmt.Errorf("legacy cluster component definition is not supported any more")
-	}
-	if len(clusterCompSpec.ComponentDef) > 0 {
-		compDef := &appsv1alpha1.ComponentDefinition{}
-		if err := cli.Get(ctx, types.NamespacedName{Name: clusterCompSpec.ComponentDef}, compDef); err != nil {
-			return nil, err
-		}
-		return compDef, nil
-	}
-	return nil, fmt.Errorf("the component definition is not provided")
-}
-
-func getClusterReferencedResources(ctx context.Context, cli client.Reader,
-	cluster *appsv1alpha1.Cluster) (*appsv1alpha1.ClusterDefinition, error) {
-	var (
-		clusterDef *appsv1alpha1.ClusterDefinition
-	)
-	if len(cluster.Spec.ClusterDefRef) > 0 {
-		clusterDef = &appsv1alpha1.ClusterDefinition{}
-		if err := cli.Get(ctx, types.NamespacedName{Name: cluster.Spec.ClusterDefRef}, clusterDef); err != nil {
-			return nil, err
-		}
-	}
-	if clusterDef == nil {
-		if len(cluster.Spec.ClusterDefRef) == 0 {
-			return nil, fmt.Errorf("cluster definition is needed for generated component")
-		} else {
-			return nil, fmt.Errorf("referenced cluster definition is not found: %s", cluster.Spec.ClusterDefRef)
-		}
-	}
-	return clusterDef, nil
-}
-
-func getClusterCompSpec4Component(ctx context.Context, cli client.Reader,
-	clusterDef *appsv1alpha1.ClusterDefinition, cluster *appsv1alpha1.Cluster,
-	comp *appsv1alpha1.Component) (*appsv1alpha1.ClusterComponentSpec, error) {
-	compName, err := ShortName(cluster.Name, comp.Name)
-	if err != nil {
-		return nil, err
-	}
-	compSpec, err := intctrlutil.GetOriginalOrGeneratedComponentSpecByName(ctx, cli, cluster, compName)
-	if err != nil {
-		return nil, err
-	}
-	if compSpec != nil {
-		return compSpec, nil
-	}
-	return nil, fmt.Errorf("cluster component spec is not found for component: %s", comp.Name)
 }
 
 func getCompLabelValue(comp *appsv1alpha1.Component, label string) (string, error) {

@@ -22,6 +22,7 @@ package component
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"strconv"
 	"strings"
 
@@ -42,73 +43,20 @@ var (
 )
 
 // BuildSynthesizedComponent builds a new SynthesizedComponent object, which is a mixture of component-related configs from ComponentDefinition and Component.
-func BuildSynthesizedComponent(reqCtx intctrlutil.RequestCtx,
+func BuildSynthesizedComponent(ctx context.Context,
 	cli client.Reader,
 	cluster *appsv1alpha1.Cluster,
 	compDef *appsv1alpha1.ComponentDefinition,
 	comp *appsv1alpha1.Component) (*SynthesizedComponent, error) {
-	return buildSynthesizedComponent(reqCtx, cli, compDef, comp, nil, cluster, nil)
-}
-
-// BuildSynthesizedComponent4Generated builds SynthesizedComponent for generated Component which w/o ComponentDefinition.
-func BuildSynthesizedComponent4Generated(reqCtx intctrlutil.RequestCtx,
-	cli client.Reader,
-	cluster *appsv1alpha1.Cluster,
-	comp *appsv1alpha1.Component) (*appsv1alpha1.ComponentDefinition, *SynthesizedComponent, error) {
-	clusterDef, err := getClusterReferencedResources(reqCtx.Ctx, cli, cluster)
-	if err != nil {
-		return nil, nil, err
-	}
-	clusterCompSpec, err := getClusterCompSpec4Component(reqCtx.Ctx, cli, clusterDef, cluster, comp)
-	if err != nil {
-		return nil, nil, err
-	}
-	if clusterCompSpec == nil {
-		return nil, nil, fmt.Errorf("cluster component spec is not found: %s", comp.Name)
-	}
-	compDef, err := getOrBuildComponentDefinition(reqCtx.Ctx, cli, clusterDef, cluster, clusterCompSpec)
-	if err != nil {
-		return nil, nil, err
-	}
-	synthesizedComp, err := buildSynthesizedComponent(reqCtx, cli, compDef, comp, clusterDef, cluster, clusterCompSpec)
-	if err != nil {
-		return nil, nil, err
-	}
-	return compDef, synthesizedComp, nil
-}
-
-// BuildSynthesizedComponentWrapper builds a new SynthesizedComponent object with a given ClusterComponentSpec.
-// TODO: remove this
-func BuildSynthesizedComponentWrapper(reqCtx intctrlutil.RequestCtx,
-	cli client.Reader,
-	cluster *appsv1alpha1.Cluster,
-	clusterCompSpec *appsv1alpha1.ClusterComponentSpec) (*SynthesizedComponent, error) {
-	if clusterCompSpec == nil {
-		return nil, fmt.Errorf("cluster component spec is not provided")
-	}
-	clusterDef, err := getClusterReferencedResources(reqCtx.Ctx, cli, cluster)
-	if err != nil {
-		return nil, err
-	}
-	compDef, err := getOrBuildComponentDefinition(reqCtx.Ctx, cli, clusterDef, cluster, clusterCompSpec)
-	if err != nil {
-		return nil, err
-	}
-	comp, err := BuildComponent(cluster, clusterCompSpec, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	return buildSynthesizedComponent(reqCtx, cli, compDef, comp, clusterDef, cluster, clusterCompSpec)
+	return buildSynthesizedComponent(ctx, cli, compDef, comp, cluster, nil)
 }
 
 // buildSynthesizedComponent builds a new SynthesizedComponent object, which is a mixture of component-related configs from ComponentDefinition and Component.
-// !!! Do not use @clusterDef, @cluster and @clusterCompSpec since they are used for the backward compatibility only.
-// TODO: remove @reqCtx & @cli
-func buildSynthesizedComponent(reqCtx intctrlutil.RequestCtx,
+// TODO: remove @ctx and @cli
+func buildSynthesizedComponent(ctx context.Context,
 	cli client.Reader,
 	compDef *appsv1alpha1.ComponentDefinition,
 	comp *appsv1alpha1.Component,
-	clusterDef *appsv1alpha1.ClusterDefinition,
 	cluster *appsv1alpha1.Cluster,
 	clusterCompSpec *appsv1alpha1.ClusterComponentSpec) (*SynthesizedComponent, error) {
 	if compDef == nil || comp == nil {
@@ -127,7 +75,7 @@ func buildSynthesizedComponent(reqCtx intctrlutil.RequestCtx,
 	if err != nil {
 		return nil, err
 	}
-	comp2CompDef, err := buildComp2CompDefs(reqCtx.Ctx, cli, cluster, clusterCompSpec)
+	comp2CompDef, err := buildComp2CompDefs(ctx, cli, cluster, clusterCompSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -179,8 +127,7 @@ func buildSynthesizedComponent(reqCtx intctrlutil.RequestCtx,
 
 	// build scheduling policy for workload
 	if err = buildSchedulingPolicy(synthesizeComp, comp); err != nil {
-		reqCtx.Log.Error(err, "failed to build scheduling policy")
-		return nil, err
+		return nil, errors.Wrap(err, "build scheduling policy failed")
 	}
 
 	// update resources
@@ -197,29 +144,22 @@ func buildSynthesizedComponent(reqCtx intctrlutil.RequestCtx,
 
 	limitSharedMemoryVolumeSize(synthesizeComp, comp)
 
-	// build componentService
 	buildComponentServices(synthesizeComp, comp)
 
 	if err = overrideConfigTemplates(synthesizeComp, comp); err != nil {
 		return nil, err
 	}
 
-	// build serviceAccountName
 	buildServiceAccountName(synthesizeComp)
 
-	// build runtimeClassName
 	buildRuntimeClassName(synthesizeComp, comp)
 
-	// build lorryContainer
-	// TODO(xingran): buildLorryContainers relies on synthesizeComp.CharacterType, which will be deprecated in the future.
-	if err := buildLorryContainers(reqCtx, synthesizeComp, clusterCompSpec); err != nil {
-		reqCtx.Log.Error(err, "build lorry containers failed.")
-		return nil, err
+	if err := buildLorryContainers(synthesizeComp, clusterCompSpec); err != nil {
+		return nil, errors.Wrap(err, "build lorry containers failed")
 	}
 
-	if err = buildServiceReferences(reqCtx.Ctx, cli, synthesizeComp, compDef, comp); err != nil {
-		reqCtx.Log.Error(err, "build service references failed.")
-		return nil, err
+	if err = buildServiceReferences(ctx, cli, synthesizeComp, compDef, comp); err != nil {
+		return nil, errors.Wrap(err, "build service references failed")
 	}
 
 	return synthesizeComp, nil

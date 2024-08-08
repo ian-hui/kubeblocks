@@ -34,7 +34,6 @@ import (
 	"github.com/apecloud/kubeblocks/pkg/controller/graph"
 	"github.com/apecloud/kubeblocks/pkg/controller/job"
 	"github.com/apecloud/kubeblocks/pkg/controller/model"
-	intctrlutil "github.com/apecloud/kubeblocks/pkg/controllerutil"
 	testapps "github.com/apecloud/kubeblocks/pkg/testutil/apps"
 )
 
@@ -96,18 +95,13 @@ var _ = Describe("Component PreTerminate Test", func() {
 
 		It("should work as expected with various inputs", func() {
 			By("test component definition without pre terminate")
-			reqCtx := intctrlutil.RequestCtx{
-				Ctx: ctx,
-				Log: tlog,
-			}
-
 			comp, err := BuildComponent(cluster, &cluster.Spec.ComponentSpecs[0], nil, nil)
 			comp.UID = cluster.UID
 			Expect(err).Should(Succeed())
 			Expect(comp).ShouldNot(BeNil())
 			// graphCli := model.NewGraphClient(k8sClient)
 
-			synthesizeComp, err := BuildSynthesizedComponent(reqCtx, testCtx.Cli, cluster, compDef, comp)
+			synthesizeComp, err := BuildSynthesizedComponent(ctx, testCtx.Cli, cluster, compDef, comp)
 			Expect(err).Should(Succeed())
 			Expect(synthesizeComp).ShouldNot(BeNil())
 			Expect(synthesizeComp.LifecycleActions).ShouldNot(BeNil())

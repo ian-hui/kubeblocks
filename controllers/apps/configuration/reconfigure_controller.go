@@ -194,7 +194,6 @@ func (r *ReconfigureReconciler) sync(reqCtx intctrlutil.RequestCtx, configMap *c
 		},
 		configMap,
 		resources.configSpec.Name,
-		reqCtx,
 		resources.componentMatchLabels())
 	if err := reconcileContext.GetRelatedObjects(); err != nil {
 		return intctrlutil.RequeueWithErrorAndRecordEvent(configMap, r.Recorder, err, reqCtx.Log)

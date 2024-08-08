@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package operations
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -65,8 +66,7 @@ func init() {
 func (r switchoverOpsHandler) ActionStartedCondition(reqCtx intctrlutil.RequestCtx, cli client.Client, opsRes *OpsResource) (*metav1.Condition, error) {
 	switchoverMessageMap := make(map[string]SwitchoverMessage)
 	for _, switchover := range opsRes.OpsRequest.Spec.SwitchoverList {
-		compSpec := opsRes.Cluster.Spec.GetComponentByName(switchover.ComponentName)
-		synthesizedComp, err := buildSynthesizedComp(reqCtx, cli, opsRes, compSpec)
+		synthesizedComp, err := buildSynthesizedComp(reqCtx.Ctx, cli, opsRes.Cluster, switchover.ComponentName)
 		if err != nil {
 			return nil, err
 		}
@@ -131,8 +131,7 @@ func doSwitchoverComponents(reqCtx intctrlutil.RequestCtx, cli client.Client, op
 		opsRequest.Status.Components = make(map[string]appsv1alpha1.OpsRequestComponentStatus)
 	}
 	for _, switchover := range switchoverList {
-		compSpec := opsRes.Cluster.Spec.GetComponentByName(switchover.ComponentName)
-		synthesizedComp, err := buildSynthesizedComp(reqCtx, cli, opsRes, compSpec)
+		synthesizedComp, err := buildSynthesizedComp(reqCtx.Ctx, cli, opsRes.Cluster, switchover.ComponentName)
 		if err != nil {
 			return err
 		}
@@ -225,8 +224,7 @@ func handleSwitchoverProgress(reqCtx intctrlutil.RequestCtx, cli client.Client, 
 			Status:    appsv1alpha1.ProcessingProgressStatus,
 			Message:   fmt.Sprintf("waiting for component %s pod role label consistency after switchover", switchover.ComponentName),
 		}
-		compSpec := opsRes.Cluster.Spec.GetComponentByName(switchover.ComponentName)
-		synthesizedComp, errBuild := component.BuildSynthesizedComponentWrapper(reqCtx, cli, opsRes.Cluster, compSpec)
+		synthesizedComp, errBuild := buildSynthesizedComp(reqCtx.Ctx, cli, opsRes.Cluster, switchover.ComponentName)
 		if errBuild != nil {
 			checkRoleLabelProcessDetail.Message = fmt.Sprintf("handleSwitchoverProgress build synthesizedComponent %s failed", switchover.ComponentName)
 			checkRoleLabelProcessDetail.Status = appsv1alpha1.FailedProgressStatus
@@ -299,17 +297,11 @@ func setComponentSwitchoverProgressDetails(recorder record.EventRecorder,
 	}
 }
 
-// buildSynthesizedComp builds synthesized component for native component or generated component.
-func buildSynthesizedComp(reqCtx intctrlutil.RequestCtx, cli client.Client, opsRes *OpsResource, clusterCompSpec *appsv1alpha1.ClusterComponentSpec) (*component.SynthesizedComponent, error) {
-	if len(clusterCompSpec.ComponentDef) > 0 {
-		compObj, compDefObj, err := component.GetCompNCompDefByName(reqCtx.Ctx, cli,
-			opsRes.Cluster.Namespace, constant.GenerateClusterComponentName(opsRes.Cluster.Name, clusterCompSpec.Name))
-		if err != nil {
-			return nil, err
-		}
-		// build synthesized component for native component
-		return component.BuildSynthesizedComponent(reqCtx, cli, opsRes.Cluster, compDefObj, compObj)
+func buildSynthesizedComp(ctx context.Context, cli client.Client, cluster *appsv1alpha1.Cluster, compName string) (*component.SynthesizedComponent, error) {
+	compObj, compDefObj, err := component.GetCompNCompDefByName(ctx, cli,
+		cluster.Namespace, constant.GenerateClusterComponentName(cluster.Name, compName))
+	if err != nil {
+		return nil, err
 	}
-	// build synthesized component for generated component
-	return component.BuildSynthesizedComponentWrapper(reqCtx, cli, opsRes.Cluster, clusterCompSpec)
+	return component.BuildSynthesizedComponent(ctx, cli, cluster, compDefObj, compObj)
 }

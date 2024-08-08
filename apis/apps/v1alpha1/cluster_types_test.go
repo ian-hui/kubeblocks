@@ -246,34 +246,3 @@ func TestSetObjectMessage(t *testing.T) {
 		t.Errorf(`Expected get message "%s"`, val)
 	}
 }
-
-func TestGetComponentOrName(t *testing.T) {
-	var (
-		componentDefName = "mysqlType"
-		componentName    = "mysql"
-	)
-	cluster := Cluster{
-		Spec: ClusterSpec{
-			ComponentSpecs: []ClusterComponentSpec{
-				{Name: componentName, ComponentDefRef: componentDefName},
-			},
-		},
-	}
-	compDefName := cluster.Spec.GetComponentDefRefName(componentName)
-	if compDefName != componentDefName {
-		t.Errorf(`function GetComponentDefRefName should return %s`, componentDefName)
-	}
-	component := cluster.Spec.GetComponentByName(componentName)
-	if component == nil {
-		t.Errorf("function GetComponentByName should not return nil")
-	}
-	componentName = "mysql1"
-	compDefName = cluster.Spec.GetComponentDefRefName(componentName)
-	if compDefName != "" {
-		t.Errorf(`function GetComponentDefRefName should return ""`)
-	}
-	component = cluster.Spec.GetComponentByName(componentName)
-	if component != nil {
-		t.Error("function GetComponentByName should return nil")
-	}
-}

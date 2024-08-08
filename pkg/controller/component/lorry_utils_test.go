@@ -30,7 +30,6 @@ import (
 
 	appsv1alpha1 "github.com/apecloud/kubeblocks/apis/apps/v1alpha1"
 	"github.com/apecloud/kubeblocks/pkg/constant"
-	intctrlutil "github.com/apecloud/kubeblocks/pkg/controllerutil"
 	viper "github.com/apecloud/kubeblocks/pkg/viperx"
 )
 
@@ -88,17 +87,13 @@ var _ = Describe("Lorry Utils", func() {
 		})
 
 		It("build role probe containers", func() {
-			reqCtx := intctrlutil.RequestCtx{
-				Ctx: ctx,
-				Log: logger,
-			}
 			defaultBuiltInHandler := appsv1alpha1.MySQLBuiltinActionHandler
 			component.LifecycleActions = &appsv1alpha1.ComponentLifecycleActions{
 				RoleProbe: &appsv1alpha1.Probe{
 					BuiltinHandler: &defaultBuiltInHandler,
 				},
 			}
-			Expect(buildLorryContainers(reqCtx, component, nil)).Should(Succeed())
+			Expect(buildLorryContainers(component, nil)).Should(Succeed())
 			Expect(component.PodSpec.Containers).Should(HaveLen(1))
 			Expect(component.PodSpec.InitContainers).Should(HaveLen(0))
 			Expect(component.PodSpec.Containers[0].Name).Should(Equal(constant.LorryContainerName))
@@ -112,10 +107,6 @@ var _ = Describe("Lorry Utils", func() {
 		})
 
 		It("build lorry container if any builtinhandler specified", func() {
-			reqCtx := intctrlutil.RequestCtx{
-				Ctx: ctx,
-				Log: logger,
-			}
 			// all other services are disabled
 			defaultBuiltInHandler := appsv1alpha1.MySQLBuiltinActionHandler
 			component.LifecycleActions = &appsv1alpha1.ComponentLifecycleActions{
@@ -123,17 +114,13 @@ var _ = Describe("Lorry Utils", func() {
 					BuiltinHandler: &defaultBuiltInHandler,
 				},
 			}
-			Expect(buildLorryContainers(reqCtx, component, nil)).Should(Succeed())
+			Expect(buildLorryContainers(component, nil)).Should(Succeed())
 			Expect(component.PodSpec.Containers).Should(HaveLen(1))
 			Expect(component.PodSpec.InitContainers).Should(HaveLen(0))
 			Expect(component.PodSpec.Containers[0].Name).Should(Equal(constant.LorryContainerName))
 		})
 
 		It("build lorry container if any exec specified", func() {
-			reqCtx := intctrlutil.RequestCtx{
-				Ctx: ctx,
-				Log: logger,
-			}
 			image := "testimage"
 			// all other services are disabled
 			component.LifecycleActions = &appsv1alpha1.ComponentLifecycleActions{
@@ -146,7 +133,7 @@ var _ = Describe("Lorry Utils", func() {
 					},
 				},
 			}
-			Expect(buildLorryContainers(reqCtx, component, nil)).Should(Succeed())
+			Expect(buildLorryContainers(component, nil)).Should(Succeed())
 			Expect(component.PodSpec.Containers).Should(HaveLen(1))
 			Expect(component.PodSpec.InitContainers).Should(HaveLen(1))
 			Expect(component.PodSpec.Containers[0].Image).Should(Equal(image))
@@ -154,10 +141,6 @@ var _ = Describe("Lorry Utils", func() {
 		})
 
 		It("build volume protection probe container without RBAC", func() {
-			reqCtx := intctrlutil.RequestCtx{
-				Ctx: ctx,
-				Log: logger,
-			}
 			component.Volumes = []appsv1alpha1.ComponentVolume{
 				{
 					Name:          "volume-001",
@@ -174,17 +157,13 @@ var _ = Describe("Lorry Utils", func() {
 					BuiltinHandler: &defaultBuiltInHandler,
 				},
 			}
-			Expect(buildLorryContainers(reqCtx, component, nil)).Should(Succeed())
+			Expect(buildLorryContainers(component, nil)).Should(Succeed())
 			Expect(component.PodSpec.Containers).Should(HaveLen(2))
 			Expect(component.PodSpec.Containers[0].Name).Should(Equal(constant.LorryContainerName))
 			Expect(component.PodSpec.Containers[1].Name).Should(Equal(constant.VolumeProtectionProbeContainerName))
 		})
 
 		It("build volume protection probe container with RBAC", func() {
-			reqCtx := intctrlutil.RequestCtx{
-				Ctx: ctx,
-				Log: logger,
-			}
 			component.Volumes = []appsv1alpha1.ComponentVolume{
 				{
 					Name:          "volume-001",
@@ -202,7 +181,7 @@ var _ = Describe("Lorry Utils", func() {
 				},
 			}
 			viper.SetDefault(constant.EnableRBACManager, true)
-			Expect(buildLorryContainers(reqCtx, component, nil)).Should(Succeed())
+			Expect(buildLorryContainers(component, nil)).Should(Succeed())
 			Expect(component.PodSpec.Containers).Should(HaveLen(2))
 			spec := &appsv1alpha1.VolumeProtectionSpec{}
 			for _, e := range component.PodSpec.Containers[0].Env {

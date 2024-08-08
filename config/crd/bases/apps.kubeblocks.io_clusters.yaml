@@ -296,10 +296,8 @@ spec:
 
                   Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a Cluster.
                 items:
-                  description: |-
-                    ClusterComponentSpec defines the specification of a Component within a Cluster.
-                    TODO +kubebuilder:validation:XValidation:rule="!has(oldSelf.componentDefRef) || has(self.componentDefRef)", message="componentDefRef is required once set"
-                    TODO +kubebuilder:validation:XValidation:rule="!has(oldSelf.componentDef) || has(self.componentDef)", message="componentDef is required once set"
+                  description: ClusterComponentSpec defines the specification of a
+                    Component within a Cluster.
                   properties:
                     affinity:
                       description: |-
@@ -418,14 +416,10 @@ spec:
                         Must comply with the IANA service naming rule.
 
 
-                        Deprecated since v0.9,
-                        because defining Components in `clusterDefinition.spec.componentDef` field has been deprecated.
+                        Deprecated since v0.9, because defining Components in `clusterDefinition.spec.componentDef` field has been deprecated.
                         This field is replaced by the `componentDef` field, use `componentDef` instead.
                         This field is maintained for backward compatibility and its use is discouraged.
                         Existing usage should be updated to the current preferred approach to avoid compatibility issues in future releases.
-
-
-                        TODO +kubebuilder:validation:XValidation:rule="self == oldSelf",message="componentDefRef is immutable"
                       maxLength: 22
                       pattern: ^[a-z]([a-z0-9\-]*[a-z0-9])?$
                       type: string
@@ -4019,9 +4013,6 @@ spec:
                         It's part of the Service DNS name and must comply with the IANA service naming rule.
                         The name is optional when ClusterComponentSpec is used as a template (e.g., in `shardingSpec`),
                         but required otherwise.
-
-
-                        TODO +kubebuilder:validation:XValidation:rule="self == oldSelf",message="name is immutable"
                       maxLength: 22
                       pattern: ^[a-z]([a-z0-9\-]*[a-z0-9])?$
                       type: string
@@ -9535,14 +9526,10 @@ spec:
                             Must comply with the IANA service naming rule.
 
 
-                            Deprecated since v0.9,
-                            because defining Components in `clusterDefinition.spec.componentDef` field has been deprecated.
+                            Deprecated since v0.9, because defining Components in `clusterDefinition.spec.componentDef` field has been deprecated.
                             This field is replaced by the `componentDef` field, use `componentDef` instead.
                             This field is maintained for backward compatibility and its use is discouraged.
                             Existing usage should be updated to the current preferred approach to avoid compatibility issues in future releases.
-
-
-                            TODO +kubebuilder:validation:XValidation:rule="self == oldSelf",message="componentDefRef is immutable"
                           maxLength: 22
                           pattern: ^[a-z]([a-z0-9\-]*[a-z0-9])?$
                           type: string
@@ -13186,9 +13173,6 @@ spec:
                             It's part of the Service DNS name and must comply with the IANA service naming rule.
                             The name is optional when ClusterComponentSpec is used as a template (e.g., in `shardingSpec`),
                             but required otherwise.
-
-
-                            TODO +kubebuilder:validation:XValidation:rule="self == oldSelf",message="name is immutable"
                           maxLength: 22
                           pattern: ^[a-z]([a-z0-9\-]*[a-z0-9])?$
                           type: string

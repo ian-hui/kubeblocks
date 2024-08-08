@@ -30,7 +30,6 @@ import (
 
 	appsv1alpha1 "github.com/apecloud/kubeblocks/apis/apps/v1alpha1"
 	"github.com/apecloud/kubeblocks/pkg/controller/component"
-	intctrlutil "github.com/apecloud/kubeblocks/pkg/controllerutil"
 	testapps "github.com/apecloud/kubeblocks/pkg/testutil/apps"
 )
 
@@ -79,15 +78,11 @@ func newAllFieldsClusterObj(compDef *appsv1alpha1.ComponentDefinition, create bo
 }
 
 func newAllFieldsSynthesizedComponent(compDef *appsv1alpha1.ComponentDefinition, cluster *appsv1alpha1.Cluster) *component.SynthesizedComponent {
-	reqCtx := intctrlutil.RequestCtx{
-		Ctx: testCtx.Ctx,
-		Log: logger,
-	}
 	comp, err := component.BuildComponent(cluster, &cluster.Spec.ComponentSpecs[0], nil, nil)
 	if err != nil {
 		panic(fmt.Sprintf("build component object error: %v", err))
 	}
-	synthesizeComp, err := component.BuildSynthesizedComponent(reqCtx, testCtx.Cli, cluster, compDef, comp)
+	synthesizeComp, err := component.BuildSynthesizedComponent(testCtx.Ctx, testCtx.Cli, cluster, compDef, comp)
 	Expect(err).Should(Succeed())
 	Expect(synthesizeComp).ShouldNot(BeNil())
 	addTestVolumeMount(synthesizeComp.PodSpec, mysqlCompName)

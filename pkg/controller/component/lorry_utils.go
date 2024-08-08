@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"strconv"
 
+	errors2 "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -32,7 +33,6 @@ import (
 	appsv1alpha1 "github.com/apecloud/kubeblocks/apis/apps/v1alpha1"
 	"github.com/apecloud/kubeblocks/pkg/constant"
 	"github.com/apecloud/kubeblocks/pkg/controller/builder"
-	intctrlutil "github.com/apecloud/kubeblocks/pkg/controllerutil"
 	viper "github.com/apecloud/kubeblocks/pkg/viperx"
 )
 
@@ -50,7 +50,7 @@ var (
 
 // buildLorryContainers builds lorry containers for component.
 // In the new ComponentDefinition API, StatusProbe and RunningProbe have been removed.
-func buildLorryContainers(reqCtx intctrlutil.RequestCtx, synthesizeComp *SynthesizedComponent, clusterCompSpec *appsv1alpha1.ClusterComponentSpec) error {
+func buildLorryContainers(synthesizeComp *SynthesizedComponent, clusterCompSpec *appsv1alpha1.ClusterComponentSpec) error {
 	// If it's not a built-in handler supported by Lorry, LorryContainers are not injected by default.
 	builtinHandler := getBuiltinActionHandler(synthesizeComp)
 	if builtinHandler == appsv1alpha1.UnknownBuiltinActionHandler {
@@ -66,8 +66,7 @@ func buildLorryContainers(reqCtx intctrlutil.RequestCtx, synthesizeComp *Synthes
 	}
 	availablePorts, err := getAvailableContainerPorts(synthesizeComp.PodSpec.Containers, []int32{lorryHTTPPort, lorryGRPCPort})
 	if err != nil {
-		reqCtx.Log.Info("get lorry container port failed", "error", err)
-		return err
+		return errors2.Wrap(err, "get available container ports for lorry container failed")
 	}
 	lorryHTTPPort = availablePorts[0]
 	lorryGRPCPort = availablePorts[1]
@@ -85,7 +84,6 @@ func buildLorryContainers(reqCtx intctrlutil.RequestCtx, synthesizeComp *Synthes
 		compRoleProbe = synthesizeComp.LifecycleActions.RoleProbe
 	}
 	if compRoleProbe != nil {
-		reqCtx.Log.V(3).Info("lorry", "role probe settings", compRoleProbe)
 		roleChangedContainer := container.DeepCopy()
 		buildRoleProbeContainer(roleChangedContainer, compRoleProbe, int(lorryHTTPPort))
 		lorryContainers = append(lorryContainers, *roleChangedContainer)
@@ -107,7 +105,6 @@ func buildLorryContainers(reqCtx intctrlutil.RequestCtx, synthesizeComp *Synthes
 	buildLorryServiceContainer(synthesizeComp, &lorryContainers[0], int(lorryHTTPPort), int(lorryGRPCPort), clusterCompSpec)
 	adaptLorryIfCustomHandlerDefined(synthesizeComp, &lorryContainers[0], int(lorryHTTPPort), int(lorryGRPCPort))
 
-	reqCtx.Log.V(1).Info("lorry", "containers", lorryContainers)
 	synthesizeComp.PodSpec.Containers = append(synthesizeComp.PodSpec.Containers, lorryContainers...)
 
 	return nil

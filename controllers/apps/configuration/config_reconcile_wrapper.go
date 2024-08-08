@@ -26,7 +26,6 @@ import (
 	workloads "github.com/apecloud/kubeblocks/apis/workloads/v1alpha1"
 	"github.com/apecloud/kubeblocks/pkg/controller/component"
 	configctrl "github.com/apecloud/kubeblocks/pkg/controller/configuration"
-	intctrlutil "github.com/apecloud/kubeblocks/pkg/controllerutil"
 	"github.com/apecloud/kubeblocks/pkg/generics"
 )
 
@@ -40,17 +39,13 @@ type configReconcileContext struct {
 
 	Containers      []string
 	InstanceSetList []workloads.InstanceSet
-
-	reqCtx intctrlutil.RequestCtx
 }
 
 func newConfigReconcileContext(resourceCtx *configctrl.ResourceCtx,
 	cm *corev1.ConfigMap,
 	configSpecName string,
-	reqCtx intctrlutil.RequestCtx,
 	matchingLabels client.MatchingLabels) *configReconcileContext {
 	configContext := configReconcileContext{
-		reqCtx:         reqCtx,
 		ConfigMap:      cm,
 		Name:           configSpecName,
 		MatchingLabels: matchingLabels,
@@ -84,13 +79,8 @@ func (c *configReconcileContext) Workload() *configReconcileContext {
 
 func (c *configReconcileContext) SynthesizedComponent() *configReconcileContext {
 	return c.Wrap(func() (err error) {
-		if c.ComponentDefObj != nil && c.ComponentObj != nil && len(c.ComponentObj.Spec.CompDef) > 0 {
-			// build synthesized component for native component
-			c.BuiltinComponent, err = component.BuildSynthesizedComponent(c.reqCtx, c.Client, c.ClusterObj, c.ComponentDefObj, c.ComponentObj)
-		} else {
-			// build synthesized component for generated component
-			c.BuiltinComponent, err = component.BuildSynthesizedComponentWrapper(c.reqCtx, c.Client, c.ClusterObj, c.ClusterComObj)
-		}
+		// build synthesized component for component
+		c.BuiltinComponent, err = component.BuildSynthesizedComponent(c.Context, c.Client, c.ClusterObj, c.ComponentDefObj, c.ComponentObj)
 		return err
 	})
 }
