@@ -533,14 +533,6 @@ func (r *OpsRequest) validateHorizontalScalingSpec(hScale HorizontalScaling, com
 		if err := validateHScaleOperation(scaleOut.ReplicaChanger, scaleOut.NewInstances, scaleOut.OfflineInstancesToOnline, false); err != nil {
 			return err
 		}
-		if len(scaleOut.OfflineInstancesToOnline) > 0 {
-			offlineInstanceSet := sets.New(compSpec.OfflineInstances...)
-			for _, offlineInsName := range scaleOut.OfflineInstancesToOnline {
-				if _, ok := offlineInstanceSet[offlineInsName]; !ok {
-					return fmt.Errorf(`cannot find the offline instance "%s" in component "%s" for scaleOut operation`, offlineInsName, hScale.ComponentName)
-				}
-			}
-		}
 	}
 	return nil
 }

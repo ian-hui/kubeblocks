@@ -489,15 +489,6 @@ var _ = Describe("OpsRequest webhook", func() {
 		Expect(testCtx.CheckedCreateObj(ctx, opsRequest).Error()).Should(ContainSubstring(
 			`the length of offlineInstancesToOnline can't be greater than the "replicaChanges" for the component`))
 
-		By("expect an error when an instance that is not in the offline instances list for online operation")
-		opsRequest.Spec.HorizontalScalingList = []HorizontalScaling{{
-			ComponentOps: ComponentOps{ComponentName: componentName},
-			ScaleOut: &ScaleOut{
-				ReplicaChanger:           ReplicaChanger{ReplicaChanges: pointer.Int32(1)},
-				OfflineInstancesToOnline: []string{fmt.Sprintf("%s-%s-0", clusterName, componentName)},
-			},
-		}}
-		Expect(testCtx.CheckedCreateObj(ctx, opsRequest).Error()).Should(ContainSubstring("cannot find the offline instance"))
 	}
 
 	testSwitchover := func(clusterDef *ClusterDefinition, cluster *Cluster) {
