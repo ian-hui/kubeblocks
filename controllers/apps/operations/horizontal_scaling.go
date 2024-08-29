@@ -207,6 +207,13 @@ func (hs horizontalScalingOpsHandler) getCreateAndDeletePodSet(opsRes *OpsResour
 			deletePodSet[k] = appsv1alpha1.GetInstanceTemplateName(clusterName, fullCompName, k)
 		}
 	}
+	if horizontalScaling.ScaleIn != nil && len(horizontalScaling.ScaleIn.OnlineInstancesToOffline) > 0 {
+		for _, v := range horizontalScaling.ScaleIn.OnlineInstancesToOffline {
+			if _, ok := deletePodSet[v]; ok {
+				deletePodSet[v] = appsv1alpha1.GetInstanceTemplateName(clusterName, fullCompName, v)
+			}
+		}
+	}
 	if opsRes.OpsRequest.Status.Phase == appsv1alpha1.OpsCancellingPhase {
 		// when cancelling this opsRequest, revert the changes.
 		return deletePodSet, createPodSet, nil
