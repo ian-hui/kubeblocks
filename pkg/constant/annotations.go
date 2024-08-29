@@ -23,7 +23,9 @@ package constant
 const (
 	// SkipImmutableCheckAnnotationKey specifies to skip the mutation check for the object.
 	// The mutation check is only applied to the fields that are declared as immutable.
-	SkipImmutableCheckAnnotationKey = "apps.kubeblocks.io/skip-immutable-check"
+
+	SkipImmutableCheckAnnotationKey    = "apps.kubeblocks.io/skip-immutable-check"
+	HscaleNewestTimestampAnnotationKey = "apps.kubeblocks.io/hscale-newest-timestamp"
 )
 
 // GetKBGenerationAnnotation returns the annotation for kubeblocks generation.

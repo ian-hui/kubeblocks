@@ -21,6 +21,7 @@ package operations
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -236,11 +237,21 @@ func (opsMgr *OpsManager) checkAndHandleOpsTimeout(reqCtx intctrlutil.RequestCtx
 	cli client.Client,
 	opsRes *OpsResource,
 	requeueAfter time.Duration) (time.Duration, error) {
+	var startTime metav1.Time
+	if newestStartTime, ok := opsRes.OpsRequest.ObjectMeta.Annotations[constant.HscaleNewestTimestampAnnotationKey]; ok {
+		int64Time, err := strconv.ParseInt(newestStartTime, 10, 64)
+		if err != nil {
+			return requeueAfter, err
+		}
+		startTime = metav1.Unix(int64Time, 0)
+	} else {
+		startTime = opsRes.OpsRequest.Status.StartTimestamp
+	}
 	timeoutSeconds := opsRes.OpsRequest.Spec.TimeoutSeconds
 	if timeoutSeconds == nil || *timeoutSeconds == 0 {
 		return requeueAfter, nil
 	}
-	timeoutPoint := opsRes.OpsRequest.Status.StartTimestamp.Add(time.Duration(*timeoutSeconds) * time.Second)
+	timeoutPoint := startTime.Add(time.Duration(*timeoutSeconds) * time.Second)
 	if !time.Now().Before(timeoutPoint) {
 		return 0, PatchOpsStatus(reqCtx.Ctx, cli, opsRes, appsv1alpha1.OpsAbortedPhase,
 			appsv1alpha1.NewAbortedCondition("Aborted due to exceeding the specified timeout period (timeoutSeconds)"))
