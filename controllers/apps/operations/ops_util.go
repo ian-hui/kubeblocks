@@ -22,12 +22,14 @@ package operations
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appsv1alpha1 "github.com/apecloud/kubeblocks/apis/apps/v1alpha1"
@@ -320,4 +322,32 @@ func getComponentSpecOrShardingTemplate(cluster *appsv1alpha1.Cluster, component
 		}
 	}
 	return nil
+}
+
+func getMissingElementsInSetFromList(set sets.Set[string], list []string) []string {
+	var diff []string
+	for _, v := range list {
+		if !set.Has(v) {
+			diff = append(diff, v)
+		}
+	}
+	return diff
+}
+
+func getStartTime(opsRes *OpsResource) (startTime metav1.Time, err error) {
+	startTime = opsRes.OpsRequest.Status.StartTimestamp
+
+	if opsRes.OpsRequest.ObjectMeta.Annotations == nil {
+		return startTime, nil
+	}
+
+	if restartTime, ok := opsRes.OpsRequest.ObjectMeta.Annotations[constant.OpsRequestRestartTimestampAnnotationKey]; ok {
+		int64Time, err := strconv.ParseInt(restartTime, 10, 64)
+		if err != nil {
+			return metav1.Time{}, err
+		}
+		return metav1.Unix(int64Time, 0), nil
+	}
+
+	return startTime, nil
 }

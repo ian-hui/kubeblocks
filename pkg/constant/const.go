@@ -165,6 +165,7 @@ const (
 	LastRoleSnapshotVersionAnnotationKey        = "apps.kubeblocks.io/last-role-snapshot-version"
 	ComponentScaleInAnnotationKey               = "apps.kubeblocks.io/component-scale-in" // ComponentScaleInAnnotationKey specifies whether the component is scaled in
 	DisableHAAnnotationKey                      = "kubeblocks.io/disable-ha"
+	HscaleValidatePolicyKey                     = "apps.kubeblocks.io/hscale-validate-policy"
 	// kubeblocks.io well-known finalizers
 	DBClusterFinalizerName         = "cluster.kubeblocks.io/finalizer"
 	DBComponentFinalizerName       = "component.kubeblocks.io/finalizer"
@@ -334,3 +335,8 @@ const (
 const InvalidContainerPort int32 = 0
 
 const EmptyInsTemplateName = ""
+
+const (
+	HscaleValidatePolicyStrict = "strict"
+	HscaleValidatePolicyIgnore = "ignore"
+)

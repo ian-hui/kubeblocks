@@ -236,11 +236,16 @@ func (opsMgr *OpsManager) checkAndHandleOpsTimeout(reqCtx intctrlutil.RequestCtx
 	cli client.Client,
 	opsRes *OpsResource,
 	requeueAfter time.Duration) (time.Duration, error) {
+
+	startTime, err := getStartTime(opsRes)
+	if err != nil {
+		return requeueAfter, nil
+	}
 	timeoutSeconds := opsRes.OpsRequest.Spec.TimeoutSeconds
 	if timeoutSeconds == nil || *timeoutSeconds == 0 {
 		return requeueAfter, nil
 	}
-	timeoutPoint := opsRes.OpsRequest.Status.StartTimestamp.Add(time.Duration(*timeoutSeconds) * time.Second)
+	timeoutPoint := startTime.Add(time.Duration(*timeoutSeconds) * time.Second)
 	if !time.Now().Before(timeoutPoint) {
 		return 0, PatchOpsStatus(reqCtx.Ctx, cli, opsRes, appsv1alpha1.OpsAbortedPhase,
 			appsv1alpha1.NewAbortedCondition("Aborted due to exceeding the specified timeout period (timeoutSeconds)"))
