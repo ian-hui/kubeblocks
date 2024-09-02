@@ -123,7 +123,7 @@ var _ = Describe("Ops ProgressDetails", func() {
 			opsRes.OpsRequest = createHorizontalScaling(clusterName, appsv1alpha1.HorizontalScaling{
 				ComponentOps: appsv1alpha1.ComponentOps{ComponentName: consensusComp},
 				Replicas:     pointer.Int32(1),
-			})
+			}, constant.HscaleValidatePolicyStrict)
 			mockComponentIsOperating(opsRes.Cluster, appsv1alpha1.UpdatingClusterCompPhase, consensusComp) // appsv1alpha1.HorizontalScalingPhase
 			initClusterForOps(opsRes)
 
@@ -172,7 +172,7 @@ var _ = Describe("Ops ProgressDetails", func() {
 			opsRes.OpsRequest = createHorizontalScaling(clusterName, appsv1alpha1.HorizontalScaling{
 				ComponentOps: appsv1alpha1.ComponentOps{ComponentName: consensusComp},
 				Replicas:     pointer.Int32(3),
-			})
+			}, constant.HscaleValidatePolicyStrict)
 			mockComponentIsOperating(opsRes.Cluster, appsv1alpha1.UpdatingClusterCompPhase, consensusComp, statelessComp)
 			// update ops phase to Running first
 			_, err = GetOpsManager().Do(reqCtx, k8sClient, opsRes)

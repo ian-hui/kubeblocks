@@ -165,6 +165,7 @@ const (
 	LastRoleSnapshotVersionAnnotationKey        = "apps.kubeblocks.io/last-role-snapshot-version"
 	ComponentScaleInAnnotationKey               = "apps.kubeblocks.io/component-scale-in" // ComponentScaleInAnnotationKey specifies whether the component is scaled in
 	DisableHAAnnotationKey                      = "kubeblocks.io/disable-ha"
+	HscaleValidatePolicyKey                     = "apps.kubeblocks.io/hscale-validate-policy"
 	// kubeblocks.io well-known finalizers
 	DBClusterFinalizerName         = "cluster.kubeblocks.io/finalizer"
 	DBComponentFinalizerName       = "component.kubeblocks.io/finalizer"
@@ -330,4 +331,9 @@ const EmptyInsTemplateName = ""
 // If it's true, the operator will degrade to a secondary operator and only manage the resources dedicated to releases prior to v1.0.
 const (
 	DualOperatorsMode = "DUAL_OPERATORS_MODE"
+)
+
+const (
+	HscaleValidatePolicyStrict = "strict"
+	HscaleValidatePolicyIgnore = "ignore"
 )

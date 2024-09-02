@@ -81,7 +81,7 @@ var _ = Describe("OpsUtil functions", func() {
 			opsRes.OpsRequest = createHorizontalScaling(clusterName, appsv1alpha1.HorizontalScaling{
 				ComponentOps: appsv1alpha1.ComponentOps{ComponentName: consensusComp},
 				Replicas:     pointer.Int32(1),
-			})
+			}, constant.HscaleValidatePolicyStrict)
 			Expect(patchValidateErrorCondition(ctx, k8sClient, opsRes, "validate error")).Should(Succeed())
 			Expect(PatchOpsHandlerNotSupported(ctx, k8sClient, opsRes)).Should(Succeed())
 			Expect(isOpsRequestFailedPhase(appsv1alpha1.OpsFailedPhase)).Should(BeTrue())
@@ -199,7 +199,7 @@ var _ = Describe("OpsUtil functions", func() {
 				ops := createHorizontalScaling(clusterName, appsv1alpha1.HorizontalScaling{
 					ComponentOps: appsv1alpha1.ComponentOps{ComponentName: consensusComp},
 					Replicas:     pointer.Int32(1),
-				})
+				}, constant.HscaleValidatePolicyStrict)
 				opsRes.OpsRequest = ops
 				_, err := GetOpsManager().Do(reqCtx, k8sClient, opsRes)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -256,7 +256,7 @@ var _ = Describe("OpsUtil functions", func() {
 				ScaleIn: &appsv1alpha1.ScaleIn{
 					ReplicaChanger: appsv1alpha1.ReplicaChanger{ReplicaChanges: pointer.Int32(1)},
 				},
-			})
+			}, constant.HscaleValidatePolicyStrict)
 			opsRes.OpsRequest = ops1
 			_, err := GetOpsManager().Do(reqCtx, k8sClient, opsRes)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -268,7 +268,7 @@ var _ = Describe("OpsUtil functions", func() {
 				ScaleOut: &appsv1alpha1.ScaleOut{
 					ReplicaChanger: appsv1alpha1.ReplicaChanger{ReplicaChanges: pointer.Int32(1)},
 				},
-			})
+			}, constant.HscaleValidatePolicyStrict)
 			ops2.Annotations = map[string]string{constant.OpsDependentOnSuccessfulOpsAnnoKey: ops1.Name}
 			ops2.Spec.Force = true
 			opsRes.OpsRequest = ops2
@@ -315,7 +315,7 @@ var _ = Describe("OpsUtil functions", func() {
 			opsRes.OpsRequest = createHorizontalScaling(clusterName, appsv1alpha1.HorizontalScaling{
 				ComponentOps: appsv1alpha1.ComponentOps{ComponentName: consensusComp},
 				Replicas:     pointer.Int32(1),
-			})
+			}, constant.HscaleValidatePolicyStrict)
 			reqCtx := intctrlutil.RequestCtx{Ctx: testCtx.Ctx}
 			_, _ = GetOpsManager().Do(reqCtx, k8sClient, opsRes)
 			Eventually(testapps.GetOpsRequestPhase(&testCtx, client.ObjectKeyFromObject(opsRes.OpsRequest))).Should(Equal(appsv1alpha1.OpsFailedPhase))
@@ -324,7 +324,7 @@ var _ = Describe("OpsUtil functions", func() {
 			opsRes.OpsRequest = createHorizontalScaling(clusterName, appsv1alpha1.HorizontalScaling{
 				ComponentOps: appsv1alpha1.ComponentOps{ComponentName: consensusComp},
 				Replicas:     pointer.Int32(1),
-			})
+			}, constant.HscaleValidatePolicyStrict)
 			opsRes.OpsRequest.Spec.Force = true
 			opsRes.OpsRequest.Spec.EnqueueOnForce = true
 			opsRes.OpsRequest.Status.Phase = appsv1alpha1.OpsPendingPhase
