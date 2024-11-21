@@ -74,12 +74,12 @@ endif
 .PHONY: build-manager-image
 build-manager-image: install-docker-buildx generate ## Build Operator manager container image.
 ifneq ($(BUILDX_ENABLED), true)
-	$(DOCKER) build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile --tag ${IMG}:${VERSION} --tag ${IMG}:latest
+	$(DOCKER) build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile --tag ${IMG}:${VERSION} --tag ${IMG}:latest --load
 else
 ifeq ($(TAG_LATEST), true)
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile --platform $(BUILDX_PLATFORMS) --tag ${IMG}:latest
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile --platform linux/amd64 --tag ${IMG}:latest --load
 else
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile --platform $(BUILDX_PLATFORMS) --tag ${IMG}:${VERSION}
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile --platform linux/amd64 --tag ${IMG}:${VERSION} --load
 endif
 endif
 
@@ -104,12 +104,12 @@ endif
 .PHONY: build-tools-image
 build-tools-image: install-docker-buildx generate test-go-generate ## Build tools container image.
 ifneq ($(BUILDX_ENABLED), true)
-	$(DOCKER) build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-tools --tag ${TOOL_IMG}:${VERSION} --tag ${TOOL_IMG}:latest
+	$(DOCKER) build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-tools --tag ${TOOL_IMG}:${VERSION} --tag ${TOOL_IMG}:latest --load
 else
 ifeq ($(TAG_LATEST), true)
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-tools --platform $(BUILDX_PLATFORMS) --tag ${TOOL_IMG}:latest
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-tools --platform $(BUILDX_PLATFORMS) --tag ${TOOL_IMG}:latest --load
 else
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-tools --platform $(BUILDX_PLATFORMS) --tag ${TOOL_IMG}:${VERSION}
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-tools --platform $(BUILDX_PLATFORMS) --tag ${TOOL_IMG}:${VERSION} --load
 endif
 endif
 

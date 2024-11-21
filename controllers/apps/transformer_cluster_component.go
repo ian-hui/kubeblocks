@@ -21,6 +21,7 @@ package apps
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"slices"
@@ -141,6 +142,7 @@ func handleCompNShardingInOrder(transCtx *clusterTransformContext, dag *graph.DA
 			unmatched = name
 			break
 		}
+		transCtx.Logger.Info(fmt.Sprintf("handle %s", name))
 		if err = handler.handle(transCtx, dag, name); err != nil {
 			return err
 		}
@@ -542,7 +544,13 @@ type clusterCompNShardingHandler struct {
 }
 
 func (h *clusterCompNShardingHandler) handle(transCtx *clusterTransformContext, dag *graph.DAG, name string) error {
+	jsonStr, err := json.Marshal(transCtx.shardingComps)
+	if err != nil {
+		return err
+	}
+	transCtx.Logger.Info(fmt.Sprintf("sharding comps: %s", jsonStr))
 	if transCtx.sharding(name) {
+		transCtx.Logger.Info(fmt.Sprintf("sharding %s is already in progress", name))
 		handler := &clusterShardingHandler{scaleIn: h.scaleIn}
 		switch h.op {
 		case createOp:
@@ -553,6 +561,7 @@ func (h *clusterCompNShardingHandler) handle(transCtx *clusterTransformContext, 
 			return handler.update(transCtx, dag, name)
 		}
 	} else {
+		transCtx.Logger.Info(fmt.Sprintf("component %s is already in progress", name))
 		handler := &clusterComponentHandler{}
 		switch h.op {
 		case createOp:
