@@ -142,7 +142,7 @@ func (t *componentWorkloadTransformer) reconcileWorkload(synthesizedComp *compon
 	comp *appsv1alpha1.Component, runningITS, protoITS *workloads.InstanceSet) error {
 	if runningITS != nil {
 		*protoITS.Spec.Selector = *runningITS.Spec.Selector
-		protoITS.Spec.Template.Labels = intctrlutil.MergeMetadataMaps(runningITS.Spec.Template.Labels, synthesizedComp.UserDefinedLabels)
+		protoITS.Spec.Template.Labels = intctrlutil.MergeMetadataMapsV2(runningITS.Spec.Template.Labels, synthesizedComp.UserDefinedLabels)
 	}
 
 	buildInstanceSetPlacementAnnotation(comp, protoITS)

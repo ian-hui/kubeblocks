@@ -69,10 +69,10 @@ func BuildInstanceSet(synthesizedComp *component.SynthesizedComponent, component
 		labels = constant.GetKBWellKnownLabels(clusterDefName, clusterName, compName)
 		compDefLabel = constant.GetClusterCompDefLabel(clusterCompDefName)
 	}
-	mergeLabels := intctrlutil.MergeMetadataMaps(labels, compDefLabel, synthesizedComp.Labels)
+	mergeLabels := intctrlutil.MergeMetadataMapsV2(labels, compDefLabel, synthesizedComp.Labels)
 
 	// build annotations
-	mergeAnnotations := intctrlutil.MergeMetadataMaps(
+	mergeAnnotations := intctrlutil.MergeMetadataMapsV2(
 		constant.GetKBGenerationAnnotation(synthesizedComp.ClusterGeneration),
 		getMonitorAnnotations(synthesizedComp, componentDef),
 		compDefLabel,

@@ -141,6 +141,20 @@ func MergeMetadataMaps(originalMap map[string]string, targetMaps ...map[string]s
 	return mergeMap
 }
 
+// MergeMetadataMaps merges targetMaps into originalMap if item not exist in originalMap and return the merged map.
+func MergeMetadataMapsV2(originalMap map[string]string, targetMaps ...map[string]string) map[string]string {
+	mergeMap := map[string]string{}
+	for k, v := range originalMap {
+		mergeMap[k] = v
+	}
+	for _, targetMap := range targetMaps {
+		for k, v := range targetMap {
+			mergeMap[k] = v
+		}
+	}
+	return mergeMap
+}
+
 var innerScheme, _ = appsv1alpha1.SchemeBuilder.Build()
 
 func SetOwnerReference(owner, object metav1.Object) error {
