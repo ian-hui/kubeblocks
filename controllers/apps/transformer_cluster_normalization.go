@@ -416,6 +416,7 @@ func (t *clusterNormalizationTransformer) writeBackCompNShardingSpecs(transCtx *
 }
 
 func (t *clusterNormalizationTransformer) checkNPatchCRDAPIVersionKey(transCtx *clusterTransformContext) error {
+	transCtx.Info(fmt.Sprintf("start to checkNPatchCRDAPIVersionKey"))
 	apiVersions := map[string][]string{}
 
 	from := func(name string, annotations map[string]string) {
@@ -424,6 +425,7 @@ func (t *clusterNormalizationTransformer) checkNPatchCRDAPIVersionKey(transCtx *
 	}
 
 	if transCtx.clusterDef != nil {
+		transCtx.Info(fmt.Sprintf("fill apiVersions with clusterDef"))
 		from(transCtx.clusterDef.Name, transCtx.clusterDef.Annotations)
 	} else {
 		for _, compDef := range transCtx.componentDefs {
@@ -437,6 +439,7 @@ func (t *clusterNormalizationTransformer) checkNPatchCRDAPIVersionKey(transCtx *
 	if len(apiVersions) > 1 {
 		return fmt.Errorf("multiple CRD API versions found: %v", apiVersions)
 	}
+	transCtx.Info(fmt.Sprintf("success to get apiVersions(%+v)", apiVersions))
 
 	apiVersion := ""
 	if len(apiVersions) == 1 {

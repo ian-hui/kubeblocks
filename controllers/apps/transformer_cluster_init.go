@@ -38,6 +38,7 @@ func (t *clusterInitTransformer) Transform(ctx graph.TransformContext, dag *grap
 	graphCli, _ := transCtx.Client.(model.GraphClient)
 
 	if !intctrlutil.ObjectAPIVersionSupported(t.cluster) {
+		ctx.GetLogger().Info("ObjectAPIVersionSupported failed")
 		return graph.ErrPrematureStop
 	}
 
