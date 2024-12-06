@@ -31,16 +31,16 @@ DOCKERFILE_DIR?=./docker
 BUILDX_PLATFORMS ?= linux/amd64,linux/arm64
 
 # Image URL to use all building/pushing image targets
-IMG ?= docker.io/apecloud/$(APP_NAME)
-TOOL_IMG ?= docker.io/apecloud/$(APP_NAME)-tools
-CLI_IMG ?= docker.io/apecloud/kbcli
-CHARTS_IMG ?= docker.io/apecloud/$(APP_NAME)-charts
+IMG ?= $(REGISTRY)/$(APP_NAME)
+TOOL_IMG ?= $(REGISTRY)/$(APP_NAME)-tools
+CLI_IMG ?= $(REGISTRY)/kbcli
+CHARTS_IMG ?= $(REGISTRY)/$(APP_NAME)-charts
 CLI_TAG ?= v$(CLI_VERSION)
-DATAPROTECTION_IMG ?= docker.io/apecloud/$(APP_NAME)-dataprotection
+DATAPROTECTION_IMG ?= $(REGISTRY)/$(APP_NAME)-dataprotection
 
 # Update whenever you upgrade dev container image
 DEV_CONTAINER_VERSION_TAG ?= latest
-DEV_CONTAINER_IMAGE_NAME = docker.io/apecloud/$(APP_NAME)-dev
+DEV_CONTAINER_IMAGE_NAME = $(REGISTRY)/$(APP_NAME)-dev
 
 DEV_CONTAINER_DOCKERFILE = Dockerfile-dev
 DOCKERFILE_DIR = ./docker

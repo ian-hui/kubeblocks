@@ -21,7 +21,9 @@ package apps
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/runtime"
 	"reflect"
 
 	"github.com/go-logr/logr"
@@ -265,6 +267,25 @@ func (c *clusterPlanBuilder) defaultWalkFunc(vertex graph.Vertex) error {
 	if !ok {
 		return fmt.Errorf("wrong vertex type %v", vertex)
 	}
+	c.transCtx.Logger.Info(fmt.Sprintf("starnop: success to get node %s %T %s", *node.Action, node.Obj, node.Obj.GetName()))
+
+	if node.Obj != nil {
+		data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(node.Obj)
+		if err != nil {
+			c.transCtx.Logger.Error(err, fmt.Sprintf("failed to get node.Obj"))
+		}
+		dataJSON, _ := json.Marshal(data)
+		c.transCtx.Logger.Info(fmt.Sprintf("starnop: node.Obj(%+v) and node.ObjJSON(%s)", data, dataJSON))
+	}
+	if node.OriObj != nil {
+		oriData, err := runtime.DefaultUnstructuredConverter.ToUnstructured(node.OriObj)
+		if err != nil {
+			c.transCtx.Logger.Error(err, fmt.Sprintf("failed to get node.OriObj"))
+		}
+		oriDataJSON, _ := json.Marshal(oriData)
+		c.transCtx.Logger.Info(fmt.Sprintf("starnop: node.ObjData(%+v) and node.oriDataJSON(%s)", oriData, oriDataJSON))
+	}
+
 	if node.Action == nil {
 		return fmt.Errorf("node action can't be nil")
 	}

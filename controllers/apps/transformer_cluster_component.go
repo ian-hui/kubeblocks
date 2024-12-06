@@ -71,9 +71,12 @@ func (t *clusterComponentTransformer) transform(transCtx *clusterTransformContex
 	if err != nil {
 		return err
 	}
+	transCtx.Logger.Info(fmt.Sprintf("success to get running set: %v", runningSet))
 	protoSet := t.protoSet(transCtx)
+	transCtx.Logger.Info(fmt.Sprintf("success to get proto set(%v)", protoSet))
 
 	createSet, deleteSet, updateSet := setDiff(runningSet, protoSet)
+	transCtx.Logger.Info(fmt.Sprintf("starnop: success to get createSet(%v) and deleteSet(%v) and updateSet(%v)", createSet, deleteSet, updateSet))
 
 	if err := deleteCompNShardingInOrder(transCtx, dag, deleteSet, pointer.Bool(true)); err != nil {
 		return err
@@ -133,6 +136,7 @@ func deleteCompNShardingInOrder(transCtx *clusterTransformContext, dag *graph.DA
 func handleCompNShardingInOrder(transCtx *clusterTransformContext, dag *graph.DAG, nameSet sets.Set[string], handler clusterConditionalHandler) error {
 	unmatched := ""
 	for _, name := range handler.ordered(sets.List(nameSet)) {
+		transCtx.Logger.Info(fmt.Sprintf("starnop: start to handle CompNSharding(%v)", name))
 		ok, err := handler.match(transCtx, dag, name)
 		if err != nil {
 			return err
@@ -442,6 +446,7 @@ type phasePrecondition struct {
 
 func (c *phasePrecondition) match(transCtx *clusterTransformContext, dag *graph.DAG, name string) (bool, error) {
 	for _, predecessor := range predecessors(c.topology, c.orders, name) {
+		transCtx.Logger.Info(fmt.Sprintf("starnop: get predecessor(%+v) for name(%s)", predecessor, name))
 		match, err := c.predecessorMatch(transCtx, dag, predecessor)
 		if err != nil {
 			return false, err
@@ -457,6 +462,7 @@ func (c *phasePrecondition) predecessorMatch(transCtx *clusterTransformContext, 
 	if transCtx.sharding(name) {
 		return c.shardingMatch(transCtx, dag, name)
 	}
+	transCtx.Logger.Info(fmt.Sprintf("starnop: start to do comp match(%s)", name))
 	return c.compMatch(transCtx, dag, name)
 }
 
@@ -467,27 +473,31 @@ func (c *phasePrecondition) compMatch(transCtx *clusterTransformContext, dag *gr
 			Name:      component.FullName(transCtx.Cluster.Name, name),
 		}
 	)
-	dagGet := func() bool {
-		graphCli, _ := transCtx.Client.(model.GraphClient)
-		for _, obj := range graphCli.FindAll(dag, &appsv1.Component{}) {
-			if client.ObjectKeyFromObject(obj) == compKey {
-				return true // TODO: should check the action?
-			}
-		}
-		return false
-	}
+	//dagGet := func() bool {
+	//	graphCli, _ := transCtx.Client.(model.GraphClient)
+	//	objs := graphCli.FindAll(dag, &appsv1.Component{})
+	//	for _, obj := range objs {
+	//		if client.ObjectKeyFromObject(obj) == compKey {
+	//			return true // TODO: should check the action?
+	//		}
+	//	}
+	//	return false
+	//}
 
 	comp := &appsv1.Component{}
 	if err := transCtx.Client.Get(transCtx.Context, compKey, comp); err != nil {
+		transCtx.Logger.Info(fmt.Sprintf("starnop: get component(%s) with error: %v", name, err))
 		return false, client.IgnoreNotFound(err)
 	}
 	if !c.expected(comp) {
 		return false, nil
 	}
+
+	transCtx.Logger.Info(fmt.Sprintf("starnop: start to do dagGet for name(%s)", name))
 	// create or update in DAG?
-	if dagGet() {
-		return false, nil
-	}
+	//if dagGet() {
+	//	return false, nil
+	//}
 	return true, nil
 }
 
