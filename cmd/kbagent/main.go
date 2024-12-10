@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -54,6 +55,8 @@ func init() {
 	pflag.StringVar(&serverConfig.UnixDomainSocket, "unix-socket", "", "The path of the Unix Domain Socket for kb-agent service.")
 	pflag.IntVar(&serverConfig.Port, "port", kbagent.DefaultHTTPPort, "The HTTP Server listen port for kb-agent service.")
 	pflag.IntVar(&serverConfig.StreamingPort, "streaming-port", kbagent.DefaultStreamingPort, "The listen port used by kb-agent to stream data.")
+	pflag.StringVar(&serverConfig.PortEnv, "port-env", "", "The HTTP Server listen port for kb-agent service.")
+	pflag.StringVar(&serverConfig.StreamingPortEnv, "streaming-port-env", "", "The listen port used by kb-agent to stream data.")
 	pflag.IntVar(&serverConfig.Concurrency, "max-concurrency", defaultMaxConcurrency,
 		fmt.Sprintf("The maximum number of concurrent connections the Server may serve, use the default value %d if <=0.", defaultMaxConcurrency))
 	pflag.BoolVar(&serverConfig.Logging, "api-logging", true, "Enable api logging for kb-agent request.")
@@ -83,6 +86,21 @@ func main() {
 	}
 	logger := kzap.New(kopts...)
 	ctrl.SetLogger(logger)
+
+	if serverConfig.PortEnv != "" {
+		portValue, err := strconv.Atoi(os.Getenv(serverConfig.PortEnv))
+		if err != nil {
+			panic(errors.Wrapf(err, "failed to get port from environment variable %s", serverConfig.PortEnv))
+		}
+		serverConfig.Port = portValue
+	}
+	if serverConfig.StreamingPortEnv != "" {
+		portValue, err := strconv.Atoi(os.Getenv(serverConfig.StreamingPortEnv))
+		if err != nil {
+			panic(errors.Wrapf(err, "failed to get streaming port from environment variable %s", serverConfig.StreamingPortEnv))
+		}
+		serverConfig.StreamingPort = portValue
+	}
 
 	serving, err := kbagent.Launch(logger, serverConfig)
 	if err != nil {

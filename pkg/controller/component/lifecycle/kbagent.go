@@ -306,11 +306,16 @@ func (a *kbagent) selectTargetPods(spec *appsv1.Action) ([]*corev1.Pod, error) {
 }
 
 func (a *kbagent) serverEndpoint(pod *corev1.Pod) (string, int32, error) {
-	port, err := intctrlutil.GetPortByName(*pod, kbagt.ContainerName, kbagt.DefaultHTTPPortName)
+	port, err := intctrlutil.GetPortByEnv(*pod, kbagt.ContainerName, kbagt.HTTPPortSourceType, kbagt.HTTPPortValue)
 	if err != nil {
 		// has no kb-agent defined
-		return "", 0, nil
+		port, err = intctrlutil.GetPortByName(*pod, kbagt.ContainerName, kbagt.DefaultHTTPPortName)
+		if err != nil {
+			// has no kb-agent defined
+			return "", 0, nil
+		}
 	}
+
 	host := pod.Status.PodIP
 	if host == "" {
 		return "", 0, fmt.Errorf("pod %v has no ip", pod.Name)
