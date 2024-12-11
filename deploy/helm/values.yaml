@@ -338,6 +338,9 @@ deployAnnotations: {}
 # Add extra pod envs to KubeBlocks Deployment
 extraEnvs: []
 
+upgradeHooks:
+  enabled: false
+
 ## webhooks settings
 ##
 ## @param webhooks.conversionEnabled
