@@ -147,29 +147,32 @@ func buildKBAgentContainer(synthesizedComp *SynthesizedComponent) error {
 	}
 
 	container, err := newContainer(kbagent.ContainerName, func(b *builder.ContainerBuilder) error {
-		ports, err1 := getAvailablePorts(synthesizedComp.PodSpec.Containers,
-			[]int32{int32(kbagent.DefaultHTTPPort), int32(kbagent.DefaultStreamingPort)})
-		if err1 != nil {
-			return err1
-		}
-		httpPort, streamingPort := int(ports[0]), int(ports[1])
-		b.AddArgs("--port", strconv.Itoa(httpPort)).
-			AddArgs("--streaming-port", strconv.Itoa(streamingPort)).
-			AddPorts(
-				corev1.ContainerPort{
-					ContainerPort: int32(httpPort),
-					Name:          kbagent.DefaultHTTPPortName,
-					Protocol:      corev1.ProtocolTCP,
-				},
-				corev1.ContainerPort{
-					ContainerPort: int32(streamingPort),
-					Name:          kbagent.DefaultStreamingPortName,
-					Protocol:      corev1.ProtocolTCP,
-				}).
-			SetStartupProbe(corev1.Probe{
-				ProbeHandler: corev1.ProbeHandler{
-					TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(httpPort)},
-				}})
+		b.AddArgs("--port-env", "AUTO_PORT0").
+			AddArgs("--streaming-port-env", "AUTO_PORT1")
+
+		//ports, err1 := getAvailablePorts(synthesizedComp.PodSpec.Containers,
+		//	[]int32{int32(kbagent.DefaultHTTPPort), int32(kbagent.DefaultStreamingPort)})
+		//if err1 != nil {
+		//	return err1
+		//}
+		//httpPort, streamingPort := int(ports[0]), int(ports[1])
+		//b.AddArgs("--port", strconv.Itoa(httpPort)).
+		//	AddArgs("--streaming-port", strconv.Itoa(streamingPort)).
+		//	AddPorts(
+		//		corev1.ContainerPort{
+		//			ContainerPort: int32(httpPort),
+		//			Name:          kbagent.DefaultHTTPPortName,
+		//			Protocol:      corev1.ProtocolTCP,
+		//		},
+		//		corev1.ContainerPort{
+		//			ContainerPort: int32(streamingPort),
+		//			Name:          kbagent.DefaultStreamingPortName,
+		//			Protocol:      corev1.ProtocolTCP,
+		//		}).
+		//	SetStartupProbe(corev1.Probe{
+		//		ProbeHandler: corev1.ProbeHandler{
+		//			TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(httpPort)},
+		//		}})
 		return nil
 	})
 	if err != nil {

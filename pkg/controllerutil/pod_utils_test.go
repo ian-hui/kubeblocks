@@ -701,3 +701,47 @@ func TestBuildImagePullSecretsByEnv(t *testing.T) {
 		})
 	})
 }
+
+func TestGetAutoPortByName(t *testing.T) {
+	type args struct {
+		annotations map[string]string
+		portValue   string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    int32
+		wantErr bool
+	}{
+		{
+			name: "test1",
+			args: args{
+				annotations: map[string]string{"io.kwai.kce.ports.redis-server": "[{\"name\":\"AUTO_PORT0\",\"value\":\"12012\"}]"},
+				portValue:   "{\"key\":\"io.kwai.kce.ports.redis-server\",\"autoPortName\":\"AUTO_PORT0\"}",
+			},
+			want:    12012,
+			wantErr: false,
+		},
+		{
+			name: "test2",
+			args: args{
+				annotations: map[string]string{"io.kwai.kce.ports.redis-server": "[{\"name\":\"AUTO_PORT0\",\"value\":\"12012\"},{\"name\":\"AUTO_PORT1\",\"value\":\"12013\"}]"},
+				portValue:   "{\"key\":\"io.kwai.kce.ports.redis-server\",\"autoPortName\":\"AUTO_PORT1\"}",
+			},
+			want:    12013,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetAutoPortByName(tt.args.annotations, tt.args.portValue)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetAutoPortByName() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("GetAutoPortByName() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

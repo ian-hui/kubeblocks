@@ -40,6 +40,11 @@ const (
 	ContainerName4Worker = "kbagent-worker"
 	InitContainerName    = "init-kbagent"
 
+	HTTPPortSourceType      = "KB_AGENT_HTTP_PORT_SOURCE_TYPE"
+	HTTPPortValue           = "KB_AGENT_HTTP_PORT_VALUE"
+	StreamingPortSourceType = "KB_AGENT_STREAMING_PORT_SOURCE_TYPE"
+	StreamingPortValue      = "KB_AGENT_STREAMING_PORT_VALUE"
+
 	DefaultHTTPPortName      = "http"
 	DefaultStreamingPortName = "streaming"
 
@@ -220,6 +225,7 @@ func runAsServer(logger logr.Logger, config server.Config, services []service.Se
 	if err != nil {
 		return errors.Wrap(err, "failed to start the HTTP server")
 	}
+	logger.Info(fmt.Sprintf("succeeded to start HTTP server with port %d", config.Port))
 
 	// start the streaming server
 	streamingServer := server.NewStreamingServer(logger, config, streamingService(services))
@@ -227,6 +233,7 @@ func runAsServer(logger logr.Logger, config server.Config, services []service.Se
 	if err != nil {
 		return errors.Wrap(err, "failed to start the streaming server")
 	}
+	logger.Info(fmt.Sprintf("succeeded to start streaming server with port %d", config.StreamingPort))
 	return nil
 }
 
