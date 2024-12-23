@@ -176,7 +176,7 @@ type InstanceSetSpec struct {
 	// +optional
 	UpdateStrategy *UpdateStrategy `json:"updateStrategy,omitempty"`
 
-	// A list of roles defined in the system.
+	// A list of roles defined in the system. Instanceset obtains role through pods' role label `kubeblocks.io/role`.
 	//
 	// +optional
 	Roles []ReplicaRole `json:"roles,omitempty"`
