@@ -334,6 +334,79 @@ func GetPortByName(pod corev1.Pod, cname, pname string) (int32, error) {
 	return 0, fmt.Errorf("port %s not found", pname)
 }
 
+func GetPortByEnv(pod corev1.Pod, cname, portSourceTypeEnvName, portValueEnvName string) (int32, error) {
+	for _, container := range pod.Spec.Containers {
+		if container.Name != cname {
+			continue
+		}
+
+		var portSourceType string
+		var portValue string
+		for _, envItem := range container.Env {
+			if envItem.Name == portSourceTypeEnvName {
+				portSourceType = envItem.Value
+				continue
+			}
+			if envItem.Name == portValueEnvName {
+				portValue = envItem.Value
+				continue
+			}
+		}
+		switch portSourceType {
+		case "AutoPort":
+			return GetAutoPortByName(pod.GetAnnotations(), portValue)
+		default:
+			return 0, fmt.Errorf("unsupported port source type: %s", portSourceType)
+		}
+	}
+	return 0, fmt.Errorf("port (%s:%s) not found", portSourceTypeEnvName, portValueEnvName)
+}
+
+func GetAutoPortByName(annotations map[string]string, portValue string) (int32, error) {
+	if annotations == nil {
+		return 0, fmt.Errorf("pod annotation is null")
+	}
+
+	type AutoPortDefinition struct {
+		AnnotationKey string `json:"key"`
+		AutoPortName  string `json:"autoPortName"`
+	}
+
+	var autoPortAnnotation = &AutoPortDefinition{}
+	if err := json.Unmarshal([]byte(portValue), &autoPortAnnotation); err != nil {
+		return 0, fmt.Errorf("failed to unmarshal autoport definition, error: %v", err)
+	}
+
+	autoPortAnnoKey := autoPortAnnotation.AnnotationKey
+	autoPortName := autoPortAnnotation.AutoPortName
+
+	//autoPortAnnoKey, autoPortName
+	autoPortAnnoValue, ok := annotations[autoPortAnnoKey]
+	if !ok {
+		return 0, fmt.Errorf("pod autoport annotation %s not found", autoPortAnnoKey)
+	}
+
+	type AutoPort struct {
+		Name  string `json:"name"`
+		Value string `json:"value"`
+	}
+
+	var autoPortList []*AutoPort
+	if err := json.Unmarshal([]byte(autoPortAnnoValue), &autoPortList); err != nil {
+		return 0, fmt.Errorf("failed to unmarshal autoport annotation, error: %v", err)
+	}
+	for _, autoPort := range autoPortList {
+		if autoPort.Name == autoPortName {
+			result, err := strconv.Atoi(autoPort.Value)
+			if err != nil {
+				return 0, fmt.Errorf("failed to atoi autoport value, error: %v", err)
+			}
+			return int32(result), nil
+		}
+	}
+	return 0, fmt.Errorf("autoport %s not found", autoPortName)
+}
+
 // PodIsReadyWithLabel checks if pod is ready for ConsensusSet/ReplicationSet component,
 // it will be available when the pod is ready and labeled with role.
 func PodIsReadyWithLabel(pod corev1.Pod) bool {

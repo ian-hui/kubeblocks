@@ -39,6 +39,8 @@ type Config struct {
 	UnixDomainSocket string
 	Port             int
 	StreamingPort    int
+	PortEnv          string
+	StreamingPortEnv string
 	Concurrency      int
 	Logging          bool
 }
