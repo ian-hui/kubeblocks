@@ -54,6 +54,11 @@ const (
 	MultiClusterServicePlacementKey = "apps.kubeblocks.io/multi-cluster-service-placement"
 )
 
+// annotation for renew the opsrequest
+const (
+	OpsRequestRestartTimestampAnnotationKey = "apps.kubeblocks.io/opsrequest-restart-timestamp"
+)
+
 func InheritedAnnotations() []string {
 	return []string{
 		RestoreFromBackupAnnotationKey,
