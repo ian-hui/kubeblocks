@@ -31,6 +31,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -209,9 +210,11 @@ func copyAndMergeComponent(oldCompObj, newCompObj *appsv1.Component) *appsv1.Com
 	compObjCopy.Spec.Stop = compProto.Spec.Stop
 	compObjCopy.Spec.Sidecars = compProto.Spec.Sidecars
 
+	oldCompObjJSON, _ := json.Marshal(oldCompObj.Spec)
+	newCompObjJSON, _ := json.Marshal(compObjCopy.Spec)
 	if reflect.DeepEqual(oldCompObj.Annotations, compObjCopy.Annotations) &&
 		reflect.DeepEqual(oldCompObj.Labels, compObjCopy.Labels) &&
-		reflect.DeepEqual(oldCompObj.Spec, compObjCopy.Spec) {
+		reflect.DeepEqual(oldCompObjJSON, newCompObjJSON) {
 		return nil
 	}
 	return compObjCopy
