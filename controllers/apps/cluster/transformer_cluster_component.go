@@ -30,9 +30,9 @@ import (
 	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -186,46 +186,6 @@ func copyAndMergeComponent(oldCompObj, newCompObj *appsv1.Component) *appsv1.Com
 	compObjCopy := oldCompObj.DeepCopy()
 	compProto := newCompObj
 
-	normalizeQuantity := func(name corev1.ResourceName, q resource.Quantity) resource.Quantity {
-		switch name {
-		case corev1.ResourceCPU:
-			return *resource.NewMilliQuantity(q.MilliValue(), resource.DecimalSI)
-		case corev1.ResourceMemory, corev1.ResourceStorage, corev1.ResourceEphemeralStorage:
-			return *resource.NewQuantity(q.Value(), resource.BinarySI)
-		default:
-			return q.DeepCopy()
-		}
-	}
-
-	normalizeResourceList := func(resources *corev1.ResourceList) {
-		if resources == nil {
-			return
-		}
-		for k, v := range *resources {
-			(*resources)[k] = normalizeQuantity(k, v)
-		}
-	}
-
-	normalize := func(spec appsv1.ComponentSpec) appsv1.ComponentSpec {
-		normalized := spec.DeepCopy()
-		if normalized.Resources.Limits != nil {
-			normalizeResourceList(&normalized.Resources.Limits)
-		}
-		if normalized.Resources.Requests != nil {
-			normalizeResourceList(&normalized.Resources.Requests)
-		}
-		for i := range normalized.VolumeClaimTemplates {
-			vct := &normalized.VolumeClaimTemplates[i]
-			if vct.Spec.Resources.Limits != nil {
-				normalizeResourceList(&vct.Spec.Resources.Limits)
-			}
-			if vct.Spec.Resources.Requests != nil {
-				normalizeResourceList(&vct.Spec.Resources.Requests)
-			}
-		}
-		return *normalized
-	}
-
 	// Merge metadata
 	ictrlutil.MergeMetadataMapInplace(compProto.Annotations, &compObjCopy.Annotations)
 	ictrlutil.MergeMetadataMapInplace(compProto.Labels, &compObjCopy.Labels)
@@ -259,15 +219,13 @@ func copyAndMergeComponent(oldCompObj, newCompObj *appsv1.Component) *appsv1.Com
 	compObjCopy.Spec.Sidecars = compProto.Spec.Sidecars
 	compObjCopy.Spec.Resources = compProto.Spec.Resources
 
-	metadataChanged := !reflect.DeepEqual(oldCompObj.Annotations, compObjCopy.Annotations) ||
-		!reflect.DeepEqual(oldCompObj.Labels, compObjCopy.Labels)
-	specChanged := !reflect.DeepEqual(normalize(oldCompObj.Spec), normalize(compObjCopy.Spec))
-
-	// If nothing changed after normalization, return nil
-	if !metadataChanged && !specChanged {
+	oldCompObjJSON, _ := json.Marshal(oldCompObj.Spec)
+	newCompObjJSON, _ := json.Marshal(compObjCopy.Spec)
+	if reflect.DeepEqual(oldCompObj.Annotations, compObjCopy.Annotations) &&
+		reflect.DeepEqual(oldCompObj.Labels, compObjCopy.Labels) &&
+		reflect.DeepEqual(oldCompObjJSON, newCompObjJSON) {
 		return nil
 	}
-
 	return compObjCopy
 }
 
