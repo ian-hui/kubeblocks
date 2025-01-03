@@ -670,7 +670,7 @@ var _ = Describe("HorizontalScaling OpsRequest", func() {
 			_ = createOpsAndToCreatingPhase(reqCtx, opsRes, appsv1alpha1.HorizontalScaling{
 				ComponentOps: appsv1alpha1.ComponentOps{ComponentName: secondaryCompName},
 				Shards:       pointer.Int32(5),
-			})
+			}, constant.HscaleValidatePolicyStrict)
 			Eventually(testapps.CheckObj(&testCtx, client.ObjectKeyFromObject(opsRes.OpsRequest), func(g Gomega, ops *appsv1alpha1.OpsRequest) {
 				g.Expect(*ops.Status.LastConfiguration.Components[secondaryCompName].Shards).Should(BeEquivalentTo(3))
 			})).Should(Succeed())
@@ -724,7 +724,7 @@ var _ = Describe("HorizontalScaling OpsRequest", func() {
 			_ = createOpsAndToCreatingPhase(reqCtx, opsRes, appsv1alpha1.HorizontalScaling{
 				ComponentOps: appsv1alpha1.ComponentOps{ComponentName: secondaryCompName},
 				Shards:       pointer.Int32(4),
-			})
+			}, constant.HscaleValidatePolicyStrict)
 			Eventually(testapps.CheckObj(&testCtx, client.ObjectKeyFromObject(opsRes.OpsRequest), func(g Gomega, ops *appsv1alpha1.OpsRequest) {
 				g.Expect(*ops.Status.LastConfiguration.Components[secondaryCompName].Shards).Should(BeEquivalentTo(5))
 			})).Should(Succeed())
