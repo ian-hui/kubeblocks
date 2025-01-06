@@ -486,24 +486,7 @@ addonHelmInstallOptions:
 upgradeAddons: false
 
 ## @param autoInstalledAddons - the list of auto-installed addons when install and upgrade.
-autoInstalledAddons:
-  - "apecloud-mysql"
-  - "etcd"
-  - "kafka"
-  - "mongodb"
-  - "mysql"
-  - "postgresql"
-  - "qdrant"
-  - "redis"
-  - "rabbitmq"
-  - "alertmanager-webhook-adaptor"
-  - "aws-load-balancer-controller"
-  - "csi-hostpath-driver"
-  - "csi-driver-nfs"
-  - "grafana"
-  - "prometheus"
-  - "snapshot-controller"
-  - "victoria-metrics-agent"
+autoInstalledAddons: []
 
 ## Prometheus Addon
 ##
