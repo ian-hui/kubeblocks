@@ -73,7 +73,7 @@ fullnameOverride: ""
 ##
 ## @param rbac.additionalPolicyRules
 ## In your Componentdefinition CR's `policyRules` field, you can only define rules kubeblocks
-## already has. If you want to define a rule that kubeblocks does not have, you can add it here. 
+## already has. If you want to define a rule that kubeblocks does not have, you can add it here.
 ## This field is `[]rbacv1.PolicyRule`.
 rbac:
   enabled: true
@@ -494,16 +494,7 @@ addonHelmInstallOptions:
 upgradeAddons: false
 
 ## @param autoInstalledAddons - the list of auto-installed addons when install and upgrade.
-autoInstalledAddons:
-  - "apecloud-mysql"
-  - "etcd"
-  - "kafka"
-  - "mongodb"
-  - "mysql"
-  - "postgresql"
-  - "qdrant"
-  - "redis"
-  - "rabbitmq"
+autoInstalledAddons: []
 
 ## k8s cluster feature gates, ref: https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
 enabledAlphaFeatureGates:
