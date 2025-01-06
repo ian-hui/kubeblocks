@@ -664,10 +664,12 @@ func (r *componentWorkloadOps) leaveMember4ScaleIn(deleteReplicas, joinedReplica
 	for _, pod := range pods {
 		if deleteReplicasSet.Has(pod.Name) {
 			if joinedReplicasSet.Has(pod.Name) { // else: hasn't joined yet, no need to leave
-				if err = r.leaveMemberForPod(pod, pods); err != nil {
-					leaveErrors = append(leaveErrors, err)
+				if hasMemberLeaveDefined {
+					if err = r.leaveMemberForPod(pod, pods); err != nil {
+						leaveErrors = append(leaveErrors, err)
+					}
+					joinedReplicasSet.Delete(pod.Name)
 				}
-				joinedReplicasSet.Delete(pod.Name)
 			}
 			deleteReplicasSet.Delete(pod.Name)
 		}
