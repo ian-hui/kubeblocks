@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package apps
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -50,6 +51,8 @@ var _ graph.Transformer = &clusterDeletionTransformer{}
 func (t *clusterDeletionTransformer) Transform(ctx graph.TransformContext, dag *graph.DAG) error {
 	transCtx, _ := ctx.(*clusterTransformContext)
 	cluster := transCtx.OrigCluster
+	clusterJSON, _ := json.Marshal(cluster)
+	transCtx.Logger.Info(fmt.Sprintf("success to get cluster: %v with clusterDeletionTransformer", string(clusterJSON)))
 	if !cluster.IsDeleting() {
 		return nil
 	}
