@@ -20,13 +20,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package instanceset
 
 import (
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
-
 	workloads "github.com/apecloud/kubeblocks/apis/workloads/v1"
 	"github.com/apecloud/kubeblocks/pkg/controller/kubebuilderx"
 	"github.com/apecloud/kubeblocks/pkg/controller/model"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // instanceAlignmentReconciler is responsible for aligning the actual instances(pods) with the desired replicas specified in the spec,
@@ -129,6 +128,7 @@ func (r *instanceAlignmentReconciler) Reconcile(tree *kubebuilderx.ObjectTree) (
 		if isOrderedReady && predecessor != nil && !isHealthy(predecessor) {
 			break
 		}
+		tree.EventRecorder.Eventf(its, corev1.EventTypeNormal, "the previous instance %s is ready, now create %s", predecessor.Name, name)
 		inst, err := buildInstanceByTemplate(name, nameToTemplateMap[name], its, "")
 		if err != nil {
 			return kubebuilderx.Continue, err
