@@ -59,6 +59,9 @@ spec:
             - "--health-probe-bind-address=:8081"
             - "--metrics-bind-address=:8080"
             - "--leader-elect"
+            {{- with .Values.leaderElectId }}
+            - "--leader-elect-id={{ . }}"
+            {{- end }}
             - "--zap-devel={{- default "false" .Values.loggerSettings.developmentMode }}"
             - "--zap-time-encoding={{- default "iso8601" .Values.loggerSettings.timeEncoding }}"
             {{- with .Values.loggerSettings.level }}

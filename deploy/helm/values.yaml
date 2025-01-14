@@ -138,6 +138,8 @@ multiCluster:
   # Configure the contexts to be disabled.
   contextsDisabled:
 
+leaderElectId: ""
+
 ## Logger settings
 ##
 ## @param loggerSettings.developmentMode
