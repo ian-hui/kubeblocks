@@ -65,9 +65,11 @@ func BuildComponent(cluster *appsv1.Cluster, compSpec *appsv1.ClusterComponentSp
 		AddAnnotations(constant.CRDAPIVersionAnnotationKey, appsv1.GroupVersion.String()).
 		AddAnnotations(constant.KBAppClusterUIDKey, string(cluster.UID)).
 		AddAnnotationsInMap(inheritedAnnotations(cluster)).
+		AddAnnotationsInMap(compSpec.Annotations).
 		AddAnnotationsInMap(annotations). // annotations added by the cluster controller
 		AddLabelsInMap(constant.GetCompLabelsWithDef(cluster.Name, compSpec.Name, compSpec.ComponentDef, labels)).
 		SetTerminationPolicy(cluster.Spec.TerminationPolicy).
+		AddLabelsInMap(compSpec.Labels).
 		SetServiceVersion(compSpec.ServiceVersion).
 		SetLabels(compSpec.Labels).
 		SetAnnotations(compSpec.Annotations).
