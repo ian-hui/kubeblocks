@@ -143,7 +143,6 @@ func handleRoleChangedEvent(cli client.Client, reqCtx intctrlutil.RequestCtx, _ 
 		return "", nil
 	}
 	role := strings.ToLower(message.Role)
-
 	snapshot := parseGlobalRoleSnapshot(role, event)
 	for _, pair := range snapshot.PodRoleNamePairs {
 		podName := types.NamespacedName{
@@ -181,7 +180,10 @@ func handleRoleChangedEvent(cli client.Client, reqCtx intctrlutil.RequestCtx, _ 
 		if err := cli.Get(reqCtx.Ctx, types.NamespacedName{Namespace: pod.Namespace, Name: name}, its); err != nil {
 			return "", err
 		}
-		reqCtx.Log.Info("handle role change event", "pod", pod.Name, "role", role, "originalRole", message.OriginalRole)
+		if its.GetAnnotations() != nil && its.GetAnnotations()[constant.RoleDisabledAnnotationKey] == "true" {
+			return "", nil
+		}
+		reqCtx.Log.Info("handle role change event", "pod", pod.Name, "role", role, "originalRole", message.OriginalRole, "message", message.Message)
 
 		if err := updatePodRoleLabel(cli, reqCtx, *its, pod, pair.RoleName, snapshot.Version); err != nil {
 			return "", err
