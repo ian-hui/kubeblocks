@@ -54,24 +54,57 @@ func (t *clusterComponentStatusTransformer) Transform(ctx graph.TransformContext
 
 func (t *clusterComponentStatusTransformer) reconcileComponentsStatus(transCtx *clusterTransformContext) error {
 	cluster := transCtx.Cluster
+
+	// 添加状态初始化日志
+	transCtx.Logger.Info("Starting to reconcile components status",
+		"clusterName", cluster.Name,
+		"componentsCount", len(transCtx.ComponentSpecs))
+
 	if cluster.Status.Components == nil {
+		transCtx.Logger.Info("Initializing cluster.Status.Components map")
 		cluster.Status.Components = make(map[string]appsv1alpha1.ClusterComponentStatus)
 	}
-	// We cannot use cluster.status.components here because of simplified API generated component is not in it.
+
 	for _, compSpec := range transCtx.ComponentSpecs {
 		compKey := types.NamespacedName{
 			Namespace: cluster.Namespace,
 			Name:      component.FullName(cluster.Name, compSpec.Name),
 		}
+
+		// 添加组件处理日志
+		transCtx.Logger.Info("Processing component",
+			"componentName", compSpec.Name,
+			"fullName", compKey.Name)
+
 		comp := &appsv1alpha1.Component{}
 		if err := transCtx.Client.Get(transCtx.Context, compKey, comp); err != nil {
 			if apierrors.IsNotFound(err) {
+				transCtx.Logger.Info("Component not found, skipping",
+					"componentName", compSpec.Name,
+					"error", err)
 				continue
 			}
+			transCtx.Logger.Error(err, "Failed to get component",
+				"componentName", compSpec.Name)
 			return err
 		}
+
+		// 记录组件状态更新
+		prevStatus := cluster.Status.Components[compSpec.Name]
 		cluster.Status.Components[compSpec.Name] = t.buildClusterCompStatus(transCtx, comp, compSpec.Name)
+
+		// 添加状态变化日志
+		transCtx.Logger.Info("Component status updated",
+			"componentName", compSpec.Name,
+			"previousPhase", prevStatus.Phase,
+			"currentPhase", cluster.Status.Components[compSpec.Name].Phase)
 	}
+
+	// 添加完成日志
+	transCtx.Logger.Info("Completed reconciling components status",
+		"clusterName", cluster.Name,
+		"componentsCount", len(cluster.Status.Components))
+
 	return nil
 }
 
@@ -85,6 +118,7 @@ func (t *clusterComponentStatusTransformer) buildClusterCompStatus(transCtx *clu
 
 	phase := status.Phase
 	t.updateClusterComponentStatus(comp, &status)
+	transCtx.Logger.Info(fmt.Sprintf("cluster component status.phase: %s", status.Phase))
 
 	if phase != status.Phase {
 		phaseTransitionMsg := clusterComponentPhaseTransitionMsg(status.Phase)
