@@ -123,6 +123,10 @@ func ActionStatusPtr() *Action {
 	return actionPtr(STATUS)
 }
 
+func ActionNoopPtr() *Action {
+	return actionPtr(NOOP)
+}
+
 func NewRequeueError(after time.Duration, reason string) error {
 	return &realRequeueError{
 		reason:       reason,

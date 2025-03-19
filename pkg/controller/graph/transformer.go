@@ -22,7 +22,7 @@ package graph
 import (
 	"context"
 	"errors"
-
+	"fmt"
 	"github.com/go-logr/logr"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -53,6 +53,7 @@ var ErrPrematureStop = errors.New("Premature-Stop")
 // ApplyTo applies TransformerChain t to dag
 func (r TransformerChain) ApplyTo(ctx TransformContext, dag *DAG) error {
 	var delayedError error
+	num := 0
 	for _, transformer := range r {
 		if err := transformer.Transform(ctx, dag); err != nil {
 			if intctrlutil.IsDelayedRequeueError(err) {
@@ -63,12 +64,14 @@ func (r TransformerChain) ApplyTo(ctx TransformContext, dag *DAG) error {
 			}
 			return ignoredIfPrematureStop(err)
 		}
+		fmt.Println(fmt.Sprintf("the dag now is %s, num is %d", dag.String(), num))
+		num++
 	}
 	return delayedError
 }
 
 func ignoredIfPrematureStop(err error) error {
-	if err == ErrPrematureStop {
+	if errors.Is(err, ErrPrematureStop) {
 		return nil
 	}
 	return err

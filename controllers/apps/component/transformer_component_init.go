@@ -34,7 +34,7 @@ func (t *componentInitTransformer) Transform(ctx graph.TransformContext, dag *gr
 	transCtx, _ := ctx.(*componentTransformContext)
 
 	// init dag
-	rootVertex := &model.ObjectVertex{Obj: transCtx.Component, OriObj: transCtx.ComponentOrig, Action: model.ActionStatusPtr()}
+	rootVertex := &model.ObjectVertex{Obj: transCtx.Component, OriObj: transCtx.ComponentOrig, Action: model.ActionNoopPtr()}
 	dag.AddVertex(rootVertex)
 
 	// init placement

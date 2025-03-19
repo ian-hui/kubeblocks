@@ -108,6 +108,7 @@ func (c *componentPlanBuilder) AddTransformer(transformer ...graph.Transformer) 
 // Build runs all transformers to generate a plan
 func (c *componentPlanBuilder) Build() (graph.Plan, error) {
 	dag := graph.NewDAG()
+	c.transCtx.GetLogger().Info(fmt.Sprintf("dag: %s", dag))
 	err := c.transformers.ApplyTo(c.transCtx, dag)
 	if err != nil {
 		c.transCtx.Logger.Info(fmt.Sprintf("build error: %s", err.Error()))

@@ -28,19 +28,19 @@ DOCKER:=DOCKER_BUILDKIT=1 docker
 DOCKERFILE_DIR?=./docker
 
 # BUILDX_PLATFORMS ?= $(subst -,/,$(ARCH))
-BUILDX_PLATFORMS ?= linux/amd64,linux/arm64
+BUILDX_PLATFORMS ?= linux/amd64
 
 # Image URL to use all building/pushing image targets
-IMG ?= docker.io/apecloud/$(APP_NAME)
-TOOL_IMG ?= docker.io/apecloud/$(APP_NAME)-tools
-CLI_IMG ?= docker.io/apecloud/kbcli
-CHARTS_IMG ?= docker.io/apecloud/$(APP_NAME)-charts
+IMG ?= $(REGISTRY)/$(APP_NAME)
+TOOL_IMG ?= $(REGISTRY)/$(APP_NAME)-tools
+CLI_IMG ?= $(REGISTRY)/kbcli
+CHARTS_IMG ?= $(REGISTRY)/$(APP_NAME)-charts
 CLI_TAG ?= v$(CLI_VERSION)
-DATAPROTECTION_IMG ?= docker.io/apecloud/$(APP_NAME)-dataprotection
+DATAPROTECTION_IMG ?= $(REGISTRY)/$(APP_NAME)-dataprotection
 
 # Update whenever you upgrade dev container image
 DEV_CONTAINER_VERSION_TAG ?= latest
-DEV_CONTAINER_IMAGE_NAME = docker.io/apecloud/$(APP_NAME)-dev
+DEV_CONTAINER_IMAGE_NAME = $(REGISTRY)/$(APP_NAME)-dev
 
 DEV_CONTAINER_DOCKERFILE = Dockerfile-dev
 DOCKERFILE_DIR = ./docker
@@ -57,7 +57,7 @@ build-dev-container-image: install-docker-buildx ## Build dev container image.
 ifneq ($(BUILDX_ENABLED), true)
 	$(DOCKER) build $(DOCKERFILE_DIR)/. $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/${DEV_CONTAINER_DOCKERFILE} --tag $(DEV_CONTAINER_IMAGE_NAME):$(DEV_CONTAINER_VERSION_TAG)
 else
-	$(DOCKER) buildx build $(DOCKERFILE_DIR)/.  $(DOCKER_BUILD_ARGS) --platform $(BUILDX_PLATFORMS) --file $(DOCKERFILE_DIR)/$(DEV_CONTAINER_DOCKERFILE) --tag $(DEV_CONTAINER_IMAGE_NAME):$(DEV_CONTAINER_VERSION_TAG)
+	$(DOCKER) buildx build $(DOCKERFILE_DIR)/.  $(DOCKER_BUILD_ARGS) --platform $(BUILDX_PLATFORMS) --file $(DOCKERFILE_DIR)/$(DEV_CONTAINER_DOCKERFILE) --tag $(DEV_CONTAINER_IMAGE_NAME):$(DEV_CONTAINER_VERSION_TAG) --load --load --load --load --load
 endif
 
 
@@ -67,7 +67,7 @@ push-dev-container-image: install-docker-buildx ## Push dev container image.
 ifneq ($(BUILDX_ENABLED), true)
 	$(DOCKER) push $(DEV_CONTAINER_IMAGE_NAME):$(DEV_CONTAINER_VERSION_TAG)
 else
-	$(DOCKER) buildx build  $(DOCKERFILE_DIR)/. $(DOCKER_BUILD_ARGS) --platform $(BUILDX_PLATFORMS) --file $(DOCKERFILE_DIR)/$(DEV_CONTAINER_DOCKERFILE) --tag $(DEV_CONTAINER_IMAGE_NAME):$(DEV_CONTAINER_VERSION_TAG) --push
+	$(DOCKER) buildx build  $(DOCKERFILE_DIR)/. $(DOCKER_BUILD_ARGS) --platform $(BUILDX_PLATFORMS) --file $(DOCKERFILE_DIR)/$(DEV_CONTAINER_DOCKERFILE) --tag $(DEV_CONTAINER_IMAGE_NAME):$(DEV_CONTAINER_VERSION_TAG) --push --load --load --load --load --load
 endif
 
 
@@ -77,9 +77,9 @@ ifneq ($(BUILDX_ENABLED), true)
 	$(DOCKER) build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile --tag ${IMG}:${VERSION} --tag ${IMG}:latest
 else
 ifeq ($(TAG_LATEST), true)
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile --platform $(BUILDX_PLATFORMS) --tag ${IMG}:latest
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile --platform $(BUILDX_PLATFORMS) --tag ${IMG}:latest --load --load --load --load --load
 else
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile --platform $(BUILDX_PLATFORMS) --tag ${IMG}:${VERSION}
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile --platform $(BUILDX_PLATFORMS) --tag ${IMG}:${VERSION} --load --load --load --load --load
 endif
 endif
 
@@ -94,9 +94,9 @@ else
 endif
 else
 ifeq ($(TAG_LATEST), true)
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile --platform $(BUILDX_PLATFORMS) --tag ${IMG}:latest --push
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile --platform $(BUILDX_PLATFORMS) --tag ${IMG}:latest --push --load --load --load --load --load
 else
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile --platform $(BUILDX_PLATFORMS) --tag ${IMG}:${VERSION} --push
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile --platform $(BUILDX_PLATFORMS) --tag ${IMG}:${VERSION} --push --load --load --load --load --load
 endif
 endif
 
@@ -107,9 +107,9 @@ ifneq ($(BUILDX_ENABLED), true)
 	$(DOCKER) build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-tools --tag ${TOOL_IMG}:${VERSION} --tag ${TOOL_IMG}:latest
 else
 ifeq ($(TAG_LATEST), true)
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-tools --platform $(BUILDX_PLATFORMS) --tag ${TOOL_IMG}:latest
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-tools --platform $(BUILDX_PLATFORMS) --tag ${TOOL_IMG}:latest --load --load --load --load --load
 else
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-tools --platform $(BUILDX_PLATFORMS) --tag ${TOOL_IMG}:${VERSION}
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-tools --platform $(BUILDX_PLATFORMS) --tag ${TOOL_IMG}:${VERSION} --load --load --load --load --load
 endif
 endif
 
@@ -123,9 +123,9 @@ else
 endif
 else
 ifeq ($(TAG_LATEST), true)
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-tools --platform $(BUILDX_PLATFORMS) --tag ${TOOL_IMG}:latest --push
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-tools --platform $(BUILDX_PLATFORMS) --tag ${TOOL_IMG}:latest --push --load --load --load --load --load
 else
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-tools --platform $(BUILDX_PLATFORMS) --tag ${TOOL_IMG}:${VERSION} --push
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-tools --platform $(BUILDX_PLATFORMS) --tag ${TOOL_IMG}:${VERSION} --push --load --load --load --load --load
 endif
 endif
 
@@ -135,9 +135,9 @@ ifneq ($(BUILDX_ENABLED), true)
 	$(DOCKER) build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-charts --tag ${CHARTS_IMG}:${VERSION} --tag ${CHARTS_IMG}:latest
 else
 ifeq ($(TAG_LATEST), true)
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-charts --platform $(BUILDX_PLATFORMS) --tag ${CHARTS_IMG}:latest
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-charts --platform $(BUILDX_PLATFORMS) --tag ${CHARTS_IMG}:latest --load --load --load --load --load
 else
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-charts --platform $(BUILDX_PLATFORMS) --tag ${CHARTS_IMG}:${VERSION}
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-charts --platform $(BUILDX_PLATFORMS) --tag ${CHARTS_IMG}:${VERSION} --load --load --load --load --load
 endif
 endif
 
@@ -152,9 +152,9 @@ else
 endif
 else
 ifeq ($(TAG_LATEST), true)
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-charts --platform $(BUILDX_PLATFORMS) --tag ${CHARTS_IMG}:latest --push
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-charts --platform $(BUILDX_PLATFORMS) --tag ${CHARTS_IMG}:latest --push --load --load --load --load --load
 else
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-charts --platform $(BUILDX_PLATFORMS) --tag ${CHARTS_IMG}:${VERSION} --push
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-charts --platform $(BUILDX_PLATFORMS) --tag ${CHARTS_IMG}:${VERSION} --push --load --load --load --load --load
 endif
 endif
 
@@ -164,9 +164,9 @@ ifneq ($(BUILDX_ENABLED), true)
 	$(DOCKER) build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-dataprotection --tag ${DATAPROTECTION_IMG}:${VERSION} --tag ${DATAPROTECTION_IMG}:latest
 else
 ifeq ($(TAG_LATEST), true)
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-dataprotection --platform $(BUILDX_PLATFORMS) --tag ${DATAPROTECTION_IMG}:latest
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-dataprotection --platform $(BUILDX_PLATFORMS) --tag ${DATAPROTECTION_IMG}:latest --load --load --load --load --load
 else
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-dataprotection --platform $(BUILDX_PLATFORMS) --tag ${DATAPROTECTION_IMG}:${VERSION}
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-dataprotection --platform $(BUILDX_PLATFORMS) --tag ${DATAPROTECTION_IMG}:${VERSION} --load --load --load --load --load
 endif
 endif
 
@@ -180,8 +180,8 @@ else
 endif
 else
 ifeq ($(TAG_LATEST), true)
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-dataprotection --platform $(BUILDX_PLATFORMS) --tag ${DATAPROTECTION_IMG}:latest --push
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-dataprotection --platform $(BUILDX_PLATFORMS) --tag ${DATAPROTECTION_IMG}:latest --push --load --load --load --load --load
 else
-	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-dataprotection --platform $(BUILDX_PLATFORMS) --tag ${DATAPROTECTION_IMG}:${VERSION} --push
+	$(DOCKER) buildx build . $(DOCKER_BUILD_ARGS) --file $(DOCKERFILE_DIR)/Dockerfile-dataprotection --platform $(BUILDX_PLATFORMS) --tag ${DATAPROTECTION_IMG}:${VERSION} --push --load --load --load --load --load
 endif
 endif

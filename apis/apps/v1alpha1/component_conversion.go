@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package v1alpha1
 
 import (
+	"fmt"
 	"github.com/jinzhu/copier"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,6 +48,7 @@ func (r *Component) ConvertTo(dstRaw conversion.Hub) error {
 	if err := copier.Copy(&dst.Status, &r.Status); err != nil {
 		return err
 	}
+	fmt.Println("dst.Status:", dst.Status)
 
 	return nil
 }
