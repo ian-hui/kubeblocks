@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package v1alpha1
 
 import (
+	"fmt"
 	"github.com/jinzhu/copier"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -184,17 +185,20 @@ func (r *InstanceSet) changesFromInstanceSet(its *workloadsv1.InstanceSet) {
 	//   updateStrategy.partition -> instanceUpdateStrategy.rollingUpdate.replicas
 	//   updateStrategy.maxUnavailable -> instanceUpdateStrategy.rollingUpdate.maxUnavailable
 	//   updateStrategy.memberUpdateStrategy -> memberUpdateStrategy
+	fmt.Println("hahah")
 	r.Spec.MemberUpdateStrategy = (*MemberUpdateStrategy)(its.Spec.MemberUpdateStrategy)
+	if r.Spec.UpdateStrategy == nil {
+		r.Spec.UpdateStrategy = &InstanceUpdateStrategy{}
+	}
+	r.Spec.UpdateStrategy = &InstanceUpdateStrategy{
+		MemberUpdateStrategy: (*MemberUpdateStrategy)(its.Spec.MemberUpdateStrategy),
+	}
 	if its.Spec.InstanceUpdateStrategy == nil {
 		return
 	}
+	fmt.Println("the updateStrategy now is " + fmt.Sprintf("%+v", r.Spec.UpdateStrategy))
 	if its.Spec.InstanceUpdateStrategy.RollingUpdate == nil {
 		return
-	}
-	if r.Spec.UpdateStrategy == nil {
-		r.Spec.UpdateStrategy = &InstanceUpdateStrategy{
-			MemberUpdateStrategy: r.Spec.MemberUpdateStrategy,
-		}
 	}
 	if its.Spec.InstanceUpdateStrategy.RollingUpdate.Replicas != nil {
 		partition, _ := intstr.GetScaledValueFromIntOrPercent(its.Spec.InstanceUpdateStrategy.RollingUpdate.Replicas, int(*its.Spec.Replicas), false)

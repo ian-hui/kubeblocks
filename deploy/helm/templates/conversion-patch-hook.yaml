@@ -1,4 +1,3 @@
-{{- if .Values.webhooks.conversionEnabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -97,4 +96,3 @@ spec:
         - name: crd-multi-version-conversion
           configMap:
             name: {{ include "kubeblocks.fullname" . }}.{{ .Release.Namespace }}.crd.conversion.webhook
-{{- end }}
