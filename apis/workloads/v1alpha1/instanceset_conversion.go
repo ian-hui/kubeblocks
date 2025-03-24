@@ -149,8 +149,10 @@ func (r *InstanceSet) changesToInstanceSet(its *workloadsv1.InstanceSet) {
 	//   updateStrategy.partition -> instanceUpdateStrategy.rollingUpdate.replicas
 	//   updateStrategy.maxUnavailable -> instanceUpdateStrategy.rollingUpdate.maxUnavailable
 	//   updateStrategy.memberUpdateStrategy -> memberUpdateStrategy
-	if its.Spec.InstanceUpdateStrategy == nil {
-		its.Spec.InstanceUpdateStrategy = &workloadsv1.InstanceUpdateStrategy{}
+	initUpdateStrategy := func() {
+		if its.Spec.InstanceUpdateStrategy == nil {
+			its.Spec.InstanceUpdateStrategy = &workloadsv1.InstanceUpdateStrategy{}
+		}
 	}
 	initRollingUpdate := func() {
 		if its.Spec.InstanceUpdateStrategy.RollingUpdate == nil {
@@ -167,11 +169,13 @@ func (r *InstanceSet) changesToInstanceSet(its *workloadsv1.InstanceSet) {
 	if r.Spec.UpdateStrategy != nil {
 		setMemberUpdateStrategy(r.Spec.UpdateStrategy.MemberUpdateStrategy)
 		if r.Spec.UpdateStrategy.Partition != nil {
+			initUpdateStrategy()
 			initRollingUpdate()
 			replicas := intstr.FromInt32(*r.Spec.UpdateStrategy.Partition)
 			its.Spec.InstanceUpdateStrategy.RollingUpdate.Replicas = &replicas
 		}
 		if r.Spec.UpdateStrategy.MaxUnavailable != nil {
+			initUpdateStrategy()
 			initRollingUpdate()
 			its.Spec.InstanceUpdateStrategy.RollingUpdate.MaxUnavailable = r.Spec.UpdateStrategy.MaxUnavailable
 		}
@@ -181,10 +185,21 @@ func (r *InstanceSet) changesToInstanceSet(its *workloadsv1.InstanceSet) {
 func (r *InstanceSet) changesFromInstanceSet(its *workloadsv1.InstanceSet) {
 	// changed:
 	// spec
-	//   updateStrategy.partition -> instanceUpdateStrategy.rollingUpdate.replicas
-	//   updateStrategy.maxUnavailable -> instanceUpdateStrategy.rollingUpdate.maxUnavailable
-	//   updateStrategy.memberUpdateStrategy -> memberUpdateStrategy
+	//	 memberUpdateStrategy -> memberUpdateStrategy
+	//    					  -> UpdateStrategy.memberUpdateStrategy
+	//   instanceUpdateStrategy.rollingUpdate.replicas -> updateStrategy.partition
+	//   instanceUpdateStrategy.rollingUpdate.maxUnavailable -> updateStrategy.maxUnavailable
+	if its.Spec.MemberUpdateStrategy == nil && its.Spec.InstanceUpdateStrategy == nil {
+		return
+	}
+
 	r.Spec.MemberUpdateStrategy = (*MemberUpdateStrategy)(its.Spec.MemberUpdateStrategy)
+	if r.Spec.UpdateStrategy == nil {
+		r.Spec.UpdateStrategy = &InstanceUpdateStrategy{
+			MemberUpdateStrategy: r.Spec.MemberUpdateStrategy,
+		}
+	}
+
 	if its.Spec.InstanceUpdateStrategy == nil {
 		return
 	}
