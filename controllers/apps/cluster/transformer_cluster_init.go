@@ -38,10 +38,11 @@ func (t *clusterInitTransformer) Transform(ctx graph.TransformContext, dag *grap
 	graphCli, _ := transCtx.Client.(model.GraphClient)
 
 	// init dag
-	graphCli.Root(dag, transCtx.OrigCluster, transCtx.Cluster, model.ActionStatusPtr())
+	graphCli.Root(dag, transCtx.OrigCluster, transCtx.Cluster, model.ActionNoopPtr())
 
 	if !intctrlutil.ObjectAPIVersionSupported(t.cluster) {
 		return graph.ErrPrematureStop
 	}
+	graphCli.Status(dag, transCtx.OrigCluster, transCtx.Cluster)
 	return nil
 }

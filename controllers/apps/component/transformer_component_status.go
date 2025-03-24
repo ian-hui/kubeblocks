@@ -93,9 +93,13 @@ func (t *componentStatusTransformer) Transform(ctx graph.TransformContext, dag *
 	}
 
 	graphCli, _ := transCtx.Client.(model.GraphClient)
-	if v := graphCli.FindMatchedVertex(dag, comp); v == nil {
-		graphCli.Status(dag, transCtx.ComponentOrig, comp)
+	if v := graphCli.FindMatchedVertex(dag, comp); v != nil {
+		ov, _ := v.(*model.ObjectVertex)
+		if *ov.Action != *model.ActionNoopPtr() {
+			return nil
+		}
 	}
+	graphCli.Status(dag, transCtx.ComponentOrig, comp)
 	return nil
 }
 
