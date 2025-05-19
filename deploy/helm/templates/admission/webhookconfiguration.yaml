@@ -1,4 +1,4 @@
-{{- if .Values.webhooks.conversionEnabled }}
+{{- if and .Values.webhooks.conversionEnabled false }}
 {{- $ca := genCA (printf "*.%s.svc" ( .Release.Namespace )) 36500 }}
 {{- $svcName := (printf "%s.%s.svc" (include "kubeblocks.svcName" .) ( .Release.Namespace )) -}}
 {{- $cert := genSignedCert $svcName nil (list $svcName (include "kubeblocks.svcName" .) (printf "%s.%s" (include "kubeblocks.svcName" .) ( .Release.Namespace ))) 36500 $ca -}}
@@ -28,7 +28,7 @@ data:
   tls.key: {{ $cert.Key | b64enc }}
   tls.crt: {{ $cert.Cert | b64enc }}
 {{- end }}
-{{- if .Values.webhooks.conversionEnabled }}
+{{- if and .Values.webhooks.conversionEnabled false }}
 ---
 apiVersion: v1
 kind: ConfigMap

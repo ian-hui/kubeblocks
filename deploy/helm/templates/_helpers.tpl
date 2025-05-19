@@ -233,13 +233,9 @@ Define default storage class name, if cloud provider is known, specify a default
 {{/*
 Define the replica count for kubeblocks.
 */}}
-{{- define "kubeblocks.replicaCount" }}
-{{- if and .Values.webhooks.conversionEnabled .Release.IsInstall }}
-{{- print 0 }}
-{{- else }}
-{{- .Values.replicaCount }}
-{{- end }}
-{{- end }}
+{{- define "kubeblocks.replicaCount" -}}
+{{- .Values.replicaCount -}}
+{{- end -}}
 
 {{- define "kubeblocks.i18nResourcesName" -}}
 {{ include "kubeblocks.fullname" . }}-i18n-resources
