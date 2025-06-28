@@ -187,6 +187,10 @@ func (r *updateReconciler) Reconcile(tree *kubebuilderx.ObjectTree) (kubebuilder
 			updatingPods++
 		} else if updatePolicy == RecreatePolicy {
 			if !isTerminating(pod) {
+				// mark pod with upgrade termination reason
+				if err = r.markPodTerminationReason(tree, pod, constant.PodTerminationReasonUpgrade); err != nil {
+					return kubebuilderx.Continue, err
+				}
 				if err = r.switchover(tree, its, pod); err != nil {
 					return kubebuilderx.Continue, err
 				}
@@ -294,4 +298,14 @@ func parseReplicasNMaxUnavailable(updateStrategy *workloads.InstanceUpdateStrate
 		}
 	}
 	return replicas, maxUnavailable, nil
+}
+
+// markPodTerminationReason marks the pod with the specified termination reason annotation.
+func (r *updateReconciler) markPodTerminationReason(tree *kubebuilderx.ObjectTree, pod *corev1.Pod, reason string) error {
+	podCopy := pod.DeepCopy()
+	if podCopy.Annotations == nil {
+		podCopy.Annotations = make(map[string]string)
+	}
+	podCopy.Annotations[constant.PodTerminationReasonAnnotationKey] = reason
+	return tree.Update(podCopy)
 }

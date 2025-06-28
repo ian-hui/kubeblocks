@@ -50,6 +50,9 @@ const (
 
 	// NodeSelectorOnceAnnotationKey adds nodeSelector in podSpec for one pod exactly once
 	NodeSelectorOnceAnnotationKey = "workloads.kubeblocks.io/node-selector-once"
+
+	// PodTerminationReasonAnnotationKey specifies the reason for pod termination
+	PodTerminationReasonAnnotationKey = "apps.kubeblocks.io/termination-reason"
 )
 
 // annotations for multi-cluster
@@ -61,6 +64,12 @@ const (
 // annotation for renew the opsrequest
 const (
 	OpsRequestRestartTimestampAnnotationKey = "apps.kubeblocks.io/opsrequest-restart-timestamp"
+)
+
+// termination reason values
+const (
+	PodTerminationReasonUpgrade   = "upgrade"
+	PodTerminationReasonScaleDown = "scale-down"
 )
 
 func InheritedAnnotations() []string {

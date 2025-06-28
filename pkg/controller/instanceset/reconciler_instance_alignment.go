@@ -186,6 +186,10 @@ func (r *instanceAlignmentReconciler) Reconcile(tree *kubebuilderx.ObjectTree) (
 				its.Name,
 				pod.Name)
 		}
+		// mark pod with scale-down termination reason
+		if err := markPodTerminationReason(tree, pod, constant.PodTerminationReasonScaleDown); err != nil {
+			return kubebuilderx.Continue, err
+		}
 		if err := tree.Delete(pod); err != nil {
 			return kubebuilderx.Continue, err
 		}
@@ -210,6 +214,16 @@ func (r *instanceAlignmentReconciler) Reconcile(tree *kubebuilderx.ObjectTree) (
 	}
 
 	return kubebuilderx.Continue, nil
+}
+
+// markPodTerminationReason marks the pod with the specified termination reason annotation.
+func markPodTerminationReason(tree *kubebuilderx.ObjectTree, pod *corev1.Pod, reason string) error {
+	podCopy := pod.DeepCopy()
+	if podCopy.Annotations == nil {
+		podCopy.Annotations = make(map[string]string)
+	}
+	podCopy.Annotations[constant.PodTerminationReasonAnnotationKey] = reason
+	return tree.Update(podCopy)
 }
 
 var _ kubebuilderx.Reconciler = &instanceAlignmentReconciler{}
