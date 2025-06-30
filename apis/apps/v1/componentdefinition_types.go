@@ -988,6 +988,13 @@ type ComponentVolume struct {
 	// +kubebuilder:validation:Required
 	Name string `json:"name"`
 
+	// Specifies the source for the volume data.
+	// This field provides different options for volume sources including standard Kubernetes volumes
+	// and KubeBlocks-specific volume sources like annotation mounts. enum:
+	//
+	// +optional
+	VolumeSource *ComponentVolumeSource `json:"volumeSource,omitempty"`
+
 	// Specifies whether the creation of a snapshot of this volume is necessary when performing a backup of the Component.
 	//
 	// Note: This field cannot be updated.
@@ -1011,6 +1018,100 @@ type ComponentVolume struct {
 	// +kubebuilder:default=0
 	// +optional
 	HighWatermark int `json:"highWatermark,omitempty"`
+}
+
+// ComponentVolumeSource represents the source of a volume for ComponentDefinition.
+// Exactly one of its members must be set.
+type ComponentVolumeSource struct {
+	// Represents an annotation mount volume source.
+	// This allows mounting pod annotations as files within containers.
+	//
+	// +optional
+	AnnotationMount *AnnotationVolumeSource `json:"annotationMount,omitempty"`
+}
+
+// AnnotationVolumeSource represents an annotation volume source.
+// This volume source allows mounting pod annotations as files within containers.
+type AnnotationVolumeSource struct {
+	// List of predefined annotation items to mount as files.
+	//
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:Required
+	Items []AnnotationVolumeItem `json:"items"`
+
+	// Optional: mode bits used to set permissions on created files by default.
+	// Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511.
+	// YAML accepts both octal and decimal values, JSON requires decimal values
+	// for mode bits. Defaults to 0644.
+	// Directories within the path are not affected by this setting.
+	// This might be in conflict with other options that affect the file
+	// mode, like fsGroup, and the result can be other mode bits set.
+	//
+	// +optional
+	DefaultMode *int32 `json:"defaultMode,omitempty"`
+}
+
+// AnnotationVolumeItem maps a predefined annotation source to a file path within the volume.
+type AnnotationVolumeItem struct {
+	// The relative path of the file to map the annotation data to.
+	// May not be an absolute path.
+	// May not contain the path element '..'.
+	// May not start with the string '..'.
+	//
+	// +kubebuilder:validation:Required
+	Path string `json:"path"`
+
+	// Source for the annotation value. Exactly one of the following may be specified.
+	//
+	// +kubebuilder:validation:Required
+	AnnotationRef AnnotationRef `json:"annotationRef"`
+
+	// Optional: mode bits used to set permissions on this file.
+	// Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511.
+	// YAML accepts both octal and decimal values, JSON requires decimal values for mode bits.
+	// If not specified, the volume defaultMode will be used.
+	// This might be in conflict with other options that affect the file
+	// mode, like fsGroup, and the result can be other mode bits set.
+	//
+	// +optional
+	Mode *int32 `json:"mode,omitempty"`
+
+	// The default value to use if the annotation is not found.
+	// If not specified and the annotation is missing, the file will not be created.
+	//
+	// +optional
+	DefaultValue *string `json:"defaultValue,omitempty"`
+}
+
+// AnnotationRef represents a source for annotation values.
+// Exactly one of its members must be set.
+type AnnotationRef struct {
+	// Selects the termination reason annotation.
+	// This annotation is set during instance set processing and which would indicate the reason
+	// why the pod is going to terminate.
+	// enum:
+	//
+	// +optional
+	TerminationReason *VarOption `json:"terminationReason,omitempty"`
+
+	// Selects a custom annotation by its key.
+	// Use this for annotations not covered by the predefined types above.
+	//
+	// +optional
+	CustomAnnotation *CustomAnnotationRef `json:"customAnnotation,omitempty"`
+}
+
+// CustomAnnotationRef allows referencing a custom annotation by its key.
+type CustomAnnotationRef struct {
+	// The annotation key to be used as data source.
+	//
+	// +kubebuilder:validation:Required
+	Key string `json:"key"`
+
+	// Specifies whether the annotation is required or optional.
+	//
+	// +optional
+	Option *VarOption `json:"option,omitempty"`
 }
 
 type HostNetwork struct {

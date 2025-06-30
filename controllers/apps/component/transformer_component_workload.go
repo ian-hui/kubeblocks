@@ -386,6 +386,9 @@ func buildPodSpecVolumeMounts(synthesizeComp *component.SynthesizedComponent) {
 		kbScriptAndConfigVolumeNames = append(kbScriptAndConfigVolumeNames, v.VolumeName)
 	}
 
+	// Build volumes for ComponentVolumeSource definitions
+	buildComponentVolumeSourceVolumes(synthesizeComp)
+
 	podSpec := synthesizeComp.PodSpec
 	for _, cc := range []*[]corev1.Container{&podSpec.Containers, &podSpec.InitContainers} {
 		volumes := podSpec.Volumes
@@ -409,6 +412,79 @@ func buildPodSpecVolumeMounts(synthesizeComp *component.SynthesizedComponent) {
 		}
 		podSpec.Volumes = volumes
 	}
+	synthesizeComp.PodSpec = podSpec
+}
+
+// buildComponentVolumeSourceVolumes builds volumes for ComponentVolumeSource definitions
+func buildComponentVolumeSourceVolumes(synthesizeComp *component.SynthesizedComponent) {
+	podSpec := synthesizeComp.PodSpec
+	volumes := podSpec.Volumes
+
+	for _, compVolume := range synthesizeComp.Volumes {
+		if compVolume.VolumeSource == nil {
+			continue
+		}
+
+		// Handle annotation mount volume source
+		if compVolume.VolumeSource.AnnotationMount != nil {
+			annotationVolumeSource := compVolume.VolumeSource.AnnotationMount
+
+			// Create a projected volume source to mount annotation data as files
+			projectedVolumeSource := &corev1.ProjectedVolumeSource{
+				DefaultMode: annotationVolumeSource.DefaultMode,
+				Sources:     []corev1.VolumeProjection{},
+			}
+
+			// Create a downward API volume projection for each annotation item
+			downwardAPIItems := make([]corev1.DownwardAPIVolumeFile, 0)
+			for _, item := range annotationVolumeSource.Items {
+				// Resolve annotation key from the AnnotationRef
+				annotationKey, err := resolveAnnotationKey(item.AnnotationRef)
+				if err != nil {
+					// Skip invalid annotation references
+					continue
+				}
+
+				downwardAPIItem := corev1.DownwardAPIVolumeFile{
+					Path: item.Path,
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: fmt.Sprintf("metadata.annotations['%s']", annotationKey),
+					},
+				}
+				if item.Mode != nil {
+					downwardAPIItem.Mode = item.Mode
+				}
+				downwardAPIItems = append(downwardAPIItems, downwardAPIItem)
+			}
+
+			if len(downwardAPIItems) > 0 {
+				projectedVolumeSource.Sources = append(projectedVolumeSource.Sources, corev1.VolumeProjection{
+					DownwardAPI: &corev1.DownwardAPIProjection{
+						Items: downwardAPIItems,
+					},
+				})
+			}
+
+			// Create the volume with projected source
+			volume := corev1.Volume{
+				Name: compVolume.Name,
+				VolumeSource: corev1.VolumeSource{
+					Projected: projectedVolumeSource,
+				},
+			}
+
+			createFn := func(_ string) corev1.Volume {
+				return volume
+			}
+			updateFn := func(existingVolume *corev1.Volume) error {
+				*existingVolume = volume
+				return nil
+			}
+			volumes, _ = intctrlutil.CreateOrUpdateVolume(volumes, compVolume.Name, createFn, updateFn)
+		}
+	}
+
+	podSpec.Volumes = volumes
 	synthesizeComp.PodSpec = podSpec
 }
 
@@ -1118,4 +1194,26 @@ func newComponentWorkloadOps(reqCtx intctrlutil.RequestCtx,
 		desiredCompPodNameSet: sets.New(compPodNames...),
 		runningItsPodNameSet:  sets.New(itsPodNames...),
 	}, nil
+}
+
+// resolveAnnotationKey resolves the annotation key from AnnotationRef
+func resolveAnnotationKey(annotationRef appsv1.AnnotationRef) (string, error) {
+	// Count non-nil fields to ensure exactly one is set
+	fieldCount := 0
+	var resolvedKey string
+
+	if annotationRef.TerminationReason != nil {
+		fieldCount++
+		resolvedKey = constant.ComponentTerminationReasonAnnotationKey
+	}
+	if annotationRef.CustomAnnotation != nil {
+		fieldCount++
+		resolvedKey = annotationRef.CustomAnnotation.Key
+	}
+
+	if fieldCount != 1 {
+		return "", fmt.Errorf("exactly one field must be set in AnnotationRef, got %d", fieldCount)
+	}
+
+	return resolvedKey, nil
 }

@@ -48,6 +48,9 @@ const (
 	// The mutation check is only applied to the fields that are declared as immutable.
 	SkipImmutableCheckAnnotationKey = "apps.kubeblocks.io/skip-immutable-check"
 
+	// ComponentTerminationReasonAnnotationKey specifies the reason for component termination during scaling operations.
+	ComponentTerminationReasonAnnotationKey = "kubeblocks.io/termination-reason"
+
 	// NodeSelectorOnceAnnotationKey adds nodeSelector in podSpec for one pod exactly once
 	NodeSelectorOnceAnnotationKey = "workloads.kubeblocks.io/node-selector-once"
 
