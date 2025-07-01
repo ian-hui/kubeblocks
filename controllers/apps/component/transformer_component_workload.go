@@ -206,11 +206,16 @@ func (t *componentWorkloadTransformer) reconcileReplicasStatus(ctx context.Conte
 	}
 
 	hasMemberJoinDefined, hasDataActionDefined := hasMemberJoinNDataActionDefined(synthesizedComp.LifecycleActions)
+	
+	fmt.Printf("[MemberJoin-DEBUG] reconcileReplicasStatus: hasMemberJoin=%v, hasDataAction=%v, replicas=%v\n", 
+		hasMemberJoinDefined, hasDataActionDefined, replicas)
+	
 	return component.StatusReplicasStatus(protoITS, replicas, hasMemberJoinDefined, hasDataActionDefined)
 }
 
 func hasMemberJoinNDataActionDefined(lifecycleActions *appsv1.ComponentLifecycleActions) (bool, bool) {
 	if lifecycleActions == nil {
+		fmt.Printf("[MemberJoin-DEBUG] lifecycleActions is nil\n")
 		return false, false
 	}
 	hasActionDefined := func(actions []*appsv1.Action) bool {
@@ -221,8 +226,12 @@ func hasMemberJoinNDataActionDefined(lifecycleActions *appsv1.ComponentLifecycle
 		}
 		return true
 	}
-	return hasActionDefined([]*appsv1.Action{lifecycleActions.MemberJoin}),
-		hasActionDefined([]*appsv1.Action{lifecycleActions.DataDump, lifecycleActions.DataLoad})
+	hasMemberJoin := hasActionDefined([]*appsv1.Action{lifecycleActions.MemberJoin})
+	hasDataAction := hasActionDefined([]*appsv1.Action{lifecycleActions.DataDump, lifecycleActions.DataLoad})
+	
+	fmt.Printf("[MemberJoin-DEBUG] Checking definitions - memberJoin: %v, dataAction: %v\n", hasMemberJoin, hasDataAction)
+	
+	return hasMemberJoin, hasDataAction
 }
 
 func (t *componentWorkloadTransformer) handleUpdate(reqCtx intctrlutil.RequestCtx, cli model.GraphClient, dag *graph.DAG,
@@ -791,6 +800,8 @@ func (r *componentWorkloadOps) joinMember4ScaleOut() error {
 		return err
 	}
 
+	fmt.Printf("[MemberJoin-DEBUG] joinMember4ScaleOut: found %d pods\n", len(pods))
+
 	joinErrors := make([]error, 0)
 	if err = component.UpdateReplicasStatusFunc(r.protoITS, func(replicas *component.ReplicasStatus) error {
 		for _, pod := range pods {
@@ -798,19 +809,28 @@ func (r *componentWorkloadOps) joinMember4ScaleOut() error {
 				return r.Name == pod.Name
 			})
 			if i < 0 {
+				fmt.Printf("[MemberJoin-DEBUG] Pod %s not found in replicas status\n", pod.Name)
 				continue // the pod is not in the replicas status?
 			}
 
 			status := replicas.Status[i]
+			
+			fmt.Printf("[MemberJoin-DEBUG] Pod %s: MemberJoined=%v\n", pod.Name, 
+				status.MemberJoined != nil && *status.MemberJoined)
+				
 			if status.MemberJoined == nil || *status.MemberJoined {
 				continue // no need to join or already joined
 			}
 
 			// TODO: should wait for the data to be loaded before joining the member?
 
+			fmt.Printf("[MemberJoin-DEBUG] Attempting memberJoin for pod %s\n", pod.Name)
+			
 			if err := r.joinMemberForPod(pod, pods); err != nil {
+				fmt.Printf("[MemberJoin-DEBUG] MemberJoin failed for pod %s: %v\n", pod.Name, err)
 				joinErrors = append(joinErrors, fmt.Errorf("pod %s: %w", pod.Name, err))
 			} else {
+				fmt.Printf("[MemberJoin-DEBUG] MemberJoin succeeded for pod %s\n", pod.Name)
 				replicas.Status[i].MemberJoined = ptr.To(true)
 			}
 		}
@@ -837,16 +857,27 @@ func (r *componentWorkloadOps) joinMember4ScaleOut() error {
 
 func (r *componentWorkloadOps) joinMemberForPod(pod *corev1.Pod, pods []*corev1.Pod) error {
 	synthesizedComp := r.synthesizeComp
+	
+	fmt.Printf("[MemberJoin-DEBUG] joinMemberForPod: creating lifecycle for pod %s\n", pod.Name)
+	
 	lfa, err := lifecycle.New(synthesizedComp.Namespace, synthesizedComp.ClusterName, synthesizedComp.Name,
 		synthesizedComp.LifecycleActions, synthesizedComp.TemplateVars, pod, pods...)
 	if err != nil {
+		fmt.Printf("[MemberJoin-DEBUG] lifecycle.New failed: %v\n", err)
 		return err
 	}
+	
+	fmt.Printf("[MemberJoin-DEBUG] calling lfa.MemberJoin for pod %s\n", pod.Name)
+	
 	if err = lfa.MemberJoin(r.reqCtx.Ctx, r.cli, nil); err != nil {
 		if !errors.Is(err, lifecycle.ErrActionNotDefined) {
+			fmt.Printf("[MemberJoin-DEBUG] MemberJoin failed for pod %s: %v\n", pod.Name, err)
 			return err
 		}
+		fmt.Printf("[MemberJoin-DEBUG] MemberJoin not defined for pod %s\n", pod.Name)
 	}
+	
+	fmt.Printf("[MemberJoin-DEBUG] MemberJoin completed successfully for pod %s\n", pod.Name)
 	r.reqCtx.Log.Info("succeed to join member for pod", "pod", pod.Name)
 	return nil
 }
