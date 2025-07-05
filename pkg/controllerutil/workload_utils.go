@@ -26,6 +26,7 @@ import (
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/apecloud/kubeblocks/pkg/constant"
@@ -41,16 +42,29 @@ func ListOwnedPods(ctx context.Context, cli client.Reader, namespace, clusterNam
 
 func listPods(ctx context.Context, cli client.Reader, namespace, clusterName, compName string,
 	labels map[string]string, opts ...client.ListOption) ([]*corev1.Pod, error) {
+	log := ctrl.Log.WithName("listPods")
+	log.Info("Listing pods", "namespace", namespace, "clusterName", clusterName, "compName", compName)
+
 	if labels == nil {
 		labels = constant.GetCompLabels(clusterName, compName)
 	} else {
 		maps.Copy(labels, constant.GetCompLabels(clusterName, compName))
 	}
+	log.Info("Using labels for pod listing", "labels", labels)
+
 	if opts == nil {
 		opts = make([]client.ListOption, 0)
 	}
 	opts = append(opts, inDataContext())
-	return listObjWithLabelsInNamespace(ctx, cli, generics.PodSignature, namespace, labels, opts...)
+	log.Info("Using multi-cluster data context for pod listing")
+
+	pods, err := listObjWithLabelsInNamespace(ctx, cli, generics.PodSignature, namespace, labels, opts...)
+	if err != nil {
+		log.Error(err, "Failed to list pods")
+		return nil, err
+	}
+	log.Info("Successfully listed pods", "podCount", len(pods))
+	return pods, nil
 }
 
 func listObjWithLabelsInNamespace[T generics.Object, PT generics.PObject[T], L generics.ObjList[T], PL generics.PObjList[T, L]](

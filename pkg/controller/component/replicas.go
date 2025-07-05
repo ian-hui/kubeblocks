@@ -38,6 +38,7 @@ import (
 	intctrlutil "github.com/apecloud/kubeblocks/pkg/controllerutil"
 	"github.com/apecloud/kubeblocks/pkg/kbagent"
 	"github.com/apecloud/kubeblocks/pkg/kbagent/proto"
+	viper "github.com/apecloud/kubeblocks/pkg/viperx"
 )
 
 const (
@@ -65,6 +66,12 @@ type ReplicaStatus struct {
 	Reconfigured      *string    `json:"reconfigured,omitempty"` // TODO: component status
 }
 
+// IsMemberJoinLeaveStatusDisabled checks if member join/leave status tracking is disabled
+func IsMemberJoinLeaveStatusDisabled() bool {
+	disabled := viper.GetBool(constant.DisableMemberJoinLeaveStatusFlag)
+	return disabled
+}
+
 func BuildReplicasStatus(running, proto *workloads.InstanceSet) {
 	if running == nil || proto == nil {
 		return
@@ -84,6 +91,14 @@ func BuildReplicasStatus(running, proto *workloads.InstanceSet) {
 }
 
 func NewReplicasStatus(its *workloads.InstanceSet, replicas []string, hasMemberJoin, hasDataAction bool) error {
+	// If status tracking is disabled and no data action is needed, skip status updates entirely
+	fmt.Printf("[NewReplicasStatus] Component: %s, isMemberJoinLeaveStatusDisabled: %v, hasDataAction: %v, hasMemberJoin: %v, replicas: %v\n",
+		its.Name, IsMemberJoinLeaveStatusDisabled(), hasDataAction, hasMemberJoin, replicas)
+	if IsMemberJoinLeaveStatusDisabled() {
+		fmt.Printf("[NewReplicasStatus] SKIPPING: member join/leave status tracking is disabled and no data action is needed, skip status updates entirely\n")
+		return nil
+	}
+
 	loaded := func() *bool {
 		if hasDataAction {
 			return ptr.To(false)
@@ -91,7 +106,7 @@ func NewReplicasStatus(its *workloads.InstanceSet, replicas []string, hasMemberJ
 		return nil
 	}()
 	joined := func() *bool {
-		if hasMemberJoin {
+		if hasMemberJoin && !IsMemberJoinLeaveStatusDisabled() {
 			return ptr.To(false)
 		}
 		return nil
@@ -144,7 +159,7 @@ func StatusReplicasStatus(its *workloads.InstanceSet, replicas []string, hasMemb
 		return nil
 	}()
 	joined := func() *bool {
-		if hasMemberJoin {
+		if hasMemberJoin && !IsMemberJoinLeaveStatusDisabled() {
 			return ptr.To(true)
 		}
 		return nil
@@ -269,12 +284,24 @@ func setReplicasStatus(its *workloads.InstanceSet, status ReplicasStatus) error 
 	if err != nil {
 		return err
 	}
+
+	// Check if the status has actually changed to avoid unnecessary updates
 	annotations := its.GetAnnotations()
 	if annotations == nil {
 		annotations = make(map[string]string)
 	}
-	annotations[replicaStatusAnnotationKey] = string(out)
-	its.SetAnnotations(annotations)
+
+	newStatusString := string(out)
+	currentStatus := annotations[replicaStatusAnnotationKey]
+
+	// Only update if the status has changed
+	if currentStatus != newStatusString {
+		fmt.Printf("[setReplicasStatus] Component: %s, status changed, updating annotations\n", its.Name)
+		annotations[replicaStatusAnnotationKey] = newStatusString
+		its.SetAnnotations(annotations)
+	} else {
+		fmt.Printf("[setReplicasStatus] Component: %s, status unchanged, skipping annotation update\n", its.Name)
+	}
 	return nil
 }
 

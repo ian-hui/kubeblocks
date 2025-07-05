@@ -28,6 +28,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -42,14 +43,20 @@ var (
 )
 
 func Setup(scheme *runtime.Scheme, cfg *rest.Config, cli client.Client, kubeConfig, contexts, disabledContexts string) (Manager, error) {
+	setupLog := ctrl.Log.WithName("multicluster-setup")
+	setupLog.Info("Starting multi-cluster setup", "kubeConfig", kubeConfig, "contexts", contexts, "disabledContexts", disabledContexts)
+
 	if len(contexts) == 0 {
+		setupLog.Info("No contexts provided, skipping multi-cluster setup")
 		return nil, nil
 	}
 
 	mcc, err := newClientNCache(scheme, kubeConfig, contexts, disabledContexts)
 	if err != nil {
+		setupLog.Error(err, "Failed to create multi-cluster clients and caches")
 		return nil, err
 	}
+	setupLog.Info("Successfully created multi-cluster clients", "clientCount", len(mcc))
 	for k, c := range mcc {
 		if isSameContextWithControl(cfg, c) {
 			cc := mcc[k]
@@ -121,14 +128,19 @@ func newClientNCache(scheme *runtime.Scheme, kubeConfig, contexts, disabledConte
 }
 
 func newClientNCache4Context(scheme *runtime.Scheme, kubeConfig, context string, disabled bool) (*multiClusterContext, error) {
+	setupLog := ctrl.Log.WithName("multicluster-setup")
 	if len(context) == 0 {
 		return nil, nil
 	}
 
+	setupLog.Info("Creating client for context", "context", context, "kubeConfig", kubeConfig, "disabled", disabled)
 	config, err := getConfigWithContext(kubeConfig, context)
 	if err != nil {
+		setupLog.Error(err, "Failed to get kubeconfig for context", "context", context)
 		return nil, fmt.Errorf("unable to get kubeconfig for context %s: %s", context, err.Error())
 	}
+	setupLog.Info("Successfully loaded kubeconfig", "context", context, "host", config.Host)
+
 	if config.UserAgent == "" {
 		config.UserAgent = rest.DefaultKubernetesUserAgent()
 	}
@@ -137,10 +149,15 @@ func newClientNCache4Context(scheme *runtime.Scheme, kubeConfig, context string,
 	var cache cache.Cache
 	if !disabled {
 		cli, cache, err = createClientNCache(scheme, config, context)
+		if err == nil {
+			setupLog.Info("Successfully created client and cache for context", "context", context)
+		}
 	} else {
 		cli, cache, err = createUnavailableClientNCache(scheme, config, context)
+		setupLog.Info("Created unavailable client for disabled context", "context", context)
 	}
 	if err != nil {
+		setupLog.Error(err, "Failed to create client for context", "context", context)
 		return nil, err
 	}
 

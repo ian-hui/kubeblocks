@@ -22,6 +22,8 @@ package component
 import (
 	"context"
 	"fmt"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"maps"
 	"reflect"
 	"strconv"
@@ -36,6 +38,46 @@ import (
 	"github.com/apecloud/kubeblocks/pkg/controller/instanceset"
 	"github.com/apecloud/kubeblocks/pkg/generics"
 )
+
+func ListOwnedPodsWithMultiClient(ctx context.Context, federalClient client.Reader, cli client.Reader, namespace, clusterName, compName string,
+	opts ...client.ListOption) ([]*corev1.Pod, error) {
+	if federalClient != nil {
+		fmt.Println("its fed client is not nil, use it")
+		// Use the full client.Client functionality
+		return ListOwnedPodsWithFederal(ctx, federalClient, namespace, clusterName, compName)
+	} else {
+		// Fallback to reader-only client
+		return ListOwnedPods(ctx, cli, namespace, clusterName, compName, opts...)
+	}
+}
+
+func ListOwnedPodsWithFederal(ctx context.Context, cli client.Reader, namespace, clusterName, compName string) ([]*corev1.Pod, error) {
+	listOpts := &client.ListOptions{
+		Namespace: namespace,
+		Raw: &metav1.ListOptions{
+			ResourceVersion: "0",
+		},
+	}
+	baseLabels := constant.GetCompLabels(clusterName, compName)
+	allLabels := make(map[string]string)
+	maps.Copy(allLabels, baseLabels)
+
+	if len(allLabels) > 0 {
+		labelSelector := labels.Set(allLabels).AsSelector()
+		listOpts.LabelSelector = labelSelector
+	}
+
+	var podList corev1.PodList
+	if err := cli.List(ctx, &podList, listOpts); err != nil {
+		return nil, err
+	}
+
+	pods := make([]*corev1.Pod, 0, len(podList.Items))
+	for i := range podList.Items {
+		pods = append(pods, &podList.Items[i])
+	}
+	return pods, nil
+}
 
 func ListOwnedWorkloads(ctx context.Context, cli client.Reader, namespace, clusterName, compName string) ([]*workloads.InstanceSet, error) {
 	return listWorkloads(ctx, cli, namespace, clusterName, compName)
@@ -122,6 +164,11 @@ func listObjWithLabelsInNamespace[T generics.Object, PT generics.PObject[T], L g
 	for i := range items {
 		objs = append(objs, &items[i])
 	}
+	names := make([]string, 0)
+	for i := range objs {
+		names = append(names, objs[i].GetName())
+	}
+	fmt.Println("[debug] listObjWithLabelsInNamespace: ", namespace, labels, names)
 	return objs, nil
 }
 

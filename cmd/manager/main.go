@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -101,6 +102,11 @@ const (
 	multiClusterKubeConfigFlagKey       flagName = "multi-cluster-kubeconfig"
 	multiClusterContextsFlagKey         flagName = "multi-cluster-contexts"
 	multiClusterContextsDisabledFlagKey flagName = "multi-cluster-contexts-disabled"
+
+	additionalKubeConfigEnabledFlagKey         flagName = "additional-kubeconfig-enabled"
+	additionalKubeConfigSecretNameFlagKey      flagName = "additional-kubeconfig-secret-name"
+	additionalKubeConfigSecretNamespaceFlagKey flagName = "additional-kubeconfig-secret-namespace"
+	additionalKubeConfigContextFlagKey         flagName = "additional-kubeconfig-context"
 
 	userAgentFlagKey flagName = "user-agent"
 )
@@ -197,8 +203,17 @@ func setupFlags() {
 	flag.String(multiClusterContextsFlagKey.String(), "", "Kube contexts the manager will talk to.")
 	flag.String(multiClusterContextsDisabledFlagKey.String(), "", "Kube contexts that mark as disabled.")
 
+	flag.Bool(additionalKubeConfigEnabledFlagKey.String(), false, "Enable additional kubeconfig for listOwnedPods.")
+	flag.String(additionalKubeConfigSecretNameFlagKey.String(), "", "Secret name containing the additional kubeconfig.")
+	flag.String(additionalKubeConfigSecretNamespaceFlagKey.String(), "", "Namespace where the additional kubeconfig secret is located.")
+	flag.String(additionalKubeConfigContextFlagKey.String(), "", "Context name to use from the additional kubeconfig.")
+
 	flag.String(constant.ManagedNamespacesFlag, "",
 		"The namespaces that the operator will manage, multiple namespaces are separated by commas.")
+
+	flag.Bool(constant.DisableMemberJoinLeaveStatusFlag, false,
+		"Disable member join/leave status tracking for component scaling operations. "+
+			"When enabled, hooks must handle idempotency.")
 
 	flag.String(userAgentFlagKey.String(), "", "User agent of the operator.")
 
@@ -385,6 +400,7 @@ func main() {
 	}
 
 	// multi-cluster manager for all data-plane k8s
+	setupLog.Info("Setting up multi-cluster manager", "kubeConfig", multiClusterKubeConfig, "contexts", multiClusterContexts, "contextsDisabled", multiClusterContextsDisabled)
 	multiClusterMgr, err := multicluster.Setup(mgr.GetScheme(), mgr.GetConfig(), mgr.GetClient(),
 		multiClusterKubeConfig, multiClusterContexts, multiClusterContextsDisabled)
 	if err != nil {
@@ -394,12 +410,20 @@ func main() {
 
 	client := mgr.GetClient()
 	if multiClusterMgr != nil {
+		setupLog.Info("Multi-cluster manager created successfully, using multi-cluster client")
 		client = multiClusterMgr.GetClient()
+	} else {
+		setupLog.Info("No multi-cluster manager, using default client")
 	}
 
 	if err := intctrlutil.InitHostPortManager(mgr.GetClient()); err != nil {
 		setupLog.Error(err, "unable to init port manager")
 		os.Exit(1)
+	}
+
+	// Initialize additional kubeConfig client if enabled
+	if err := intctrlutil.InitFederalClient(context.Background(), mgr.GetClient()); err != nil {
+		setupLog.Error(err, "unable to init federal kubeConfig client")
 	}
 
 	if viper.GetBool(appsFlagKey.viperName()) {
@@ -459,9 +483,10 @@ func main() {
 		}
 
 		if err = (&component.ComponentReconciler{
-			Client:   client,
-			Scheme:   mgr.GetScheme(),
-			Recorder: mgr.GetEventRecorderFor("component-controller"),
+			Client:        client,
+			FederalClient: intctrlutil.GetFederalClient(),
+			Scheme:        mgr.GetScheme(),
+			Recorder:      mgr.GetEventRecorderFor("component-controller"),
 		}).SetupWithManager(mgr, multiClusterMgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "Component")
 			os.Exit(1)

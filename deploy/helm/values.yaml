@@ -138,6 +138,20 @@ multiCluster:
   # Configure the contexts to be disabled.
   contextsDisabled:
 
+## Specify the configuration for additional kubeconfig used by listOwnedPods.
+##
+## @param additionalKubeConfig.secretName
+## @param additionalKubeConfig.enabled
+additionalKubeConfig:
+  # Enable additional kubeconfig for listOwnedPods
+  enabled: false
+  # Secret name containing the additional kubeconfig. The config content should be in the item with the key kubeconfig.
+  secretName: ""
+  # The namespace where the secret is located.
+  secretNamespace: ""
+  # The context name to use from the additional kubeconfig.
+  context: ""
+
 leaderElectId: ""
 
 ## Logger settings

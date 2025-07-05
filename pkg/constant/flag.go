@@ -22,7 +22,8 @@ package constant
 const (
 	EnableRBACManager = "EnableRBACManager"
 
-	ManagedNamespacesFlag = "managed-namespaces"
+	ManagedNamespacesFlag            = "managed-namespaces"
+	DisableMemberJoinLeaveStatusFlag = "disable_member_join_leave_status"
 )
 
 const (

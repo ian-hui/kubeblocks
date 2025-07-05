@@ -61,11 +61,13 @@ const (
 // componentWorkloadTransformer handles component workload generation
 type componentWorkloadTransformer struct {
 	client.Client
+	FederalClient client.Client
 }
 
 // componentWorkloadOps handles component workload ops
 type componentWorkloadOps struct {
 	cli            client.Client
+	federalClient  client.Client
 	reqCtx         intctrlutil.RequestCtx
 	component      *appsv1.Component
 	synthesizeComp *component.SynthesizedComponent
@@ -206,10 +208,10 @@ func (t *componentWorkloadTransformer) reconcileReplicasStatus(ctx context.Conte
 	}
 
 	hasMemberJoinDefined, hasDataActionDefined := hasMemberJoinNDataActionDefined(synthesizedComp.LifecycleActions)
-	
-	fmt.Printf("[MemberJoin-DEBUG] reconcileReplicasStatus: hasMemberJoin=%v, hasDataAction=%v, replicas=%v\n", 
+
+	fmt.Printf("[MemberJoin-DEBUG] reconcileReplicasStatus: hasMemberJoin=%v, hasDataAction=%v, replicas=%v\n",
 		hasMemberJoinDefined, hasDataActionDefined, replicas)
-	
+
 	return component.StatusReplicasStatus(protoITS, replicas, hasMemberJoinDefined, hasDataActionDefined)
 }
 
@@ -228,9 +230,9 @@ func hasMemberJoinNDataActionDefined(lifecycleActions *appsv1.ComponentLifecycle
 	}
 	hasMemberJoin := hasActionDefined([]*appsv1.Action{lifecycleActions.MemberJoin})
 	hasDataAction := hasActionDefined([]*appsv1.Action{lifecycleActions.DataDump, lifecycleActions.DataLoad})
-	
+
 	fmt.Printf("[MemberJoin-DEBUG] Checking definitions - memberJoin: %v, dataAction: %v\n", hasMemberJoin, hasDataAction)
-	
+
 	return hasMemberJoin, hasDataAction
 }
 
@@ -367,7 +369,7 @@ func (t *componentWorkloadTransformer) startWorkload(
 
 func (t *componentWorkloadTransformer) handleWorkloadUpdate(reqCtx intctrlutil.RequestCtx, dag *graph.DAG,
 	synthesizeComp *component.SynthesizedComponent, comp *appsv1.Component, obj, its *workloads.InstanceSet) error {
-	cwo, err := newComponentWorkloadOps(reqCtx, t.Client, synthesizeComp, comp, obj, its, dag)
+	cwo, err := newComponentWorkloadOps(reqCtx, t.Client, t.FederalClient, synthesizeComp, comp, obj, its, dag)
 	if err != nil {
 		return err
 	}
@@ -570,10 +572,12 @@ func (r *componentWorkloadOps) horizontalScale() error {
 		in  = r.runningItsPodNameSet.Difference(r.desiredCompPodNameSet)
 		out = r.desiredCompPodNameSet.Difference(r.runningItsPodNameSet)
 	)
+	fmt.Println("r.runningItsPodNameSet = ", r.runningItsPodNameSet)
+	fmt.Println("in.Len() = ", in.Len())
+	fmt.Println("out.Len() = ", out.Len())
 	if in.Len() == 0 && out.Len() == 0 {
 		return r.postHorizontalScale() // TODO: how about consecutive horizontal scales?
 	}
-
 	if in.Len() > 0 {
 		if err := r.scaleIn(); err != nil {
 			return err
@@ -603,10 +607,20 @@ func (r *componentWorkloadOps) scaleIn() error {
 	}
 
 	deleteReplicas := r.runningItsPodNameSet.Difference(r.desiredCompPodNameSet).UnsortedList()
+	hasMemberLeaveDefined := r.synthesizeComp.LifecycleActions != nil && r.synthesizeComp.LifecycleActions.MemberLeave != nil
+
+	fmt.Printf("[scaleIn] Component: %s, deleteReplicas: %v, hasMemberLeaveDefined: %v, statusDisabled: %v\n",
+		r.synthesizeComp.Name, deleteReplicas, hasMemberLeaveDefined, component.IsMemberJoinLeaveStatusDisabled())
+
+	// If status tracking is disabled and we have member leave defined, execute leave hook directly before scaling
+	statusDisabled := component.IsMemberJoinLeaveStatusDisabled()
+	fmt.Printf("[scaleIn] CONDITION CHECK: statusDisabled=%v, hasMemberLeaveDefined=%v, deleteReplicasCount=%d\n",
+		statusDisabled, hasMemberLeaveDefined, len(deleteReplicas))
+
 	joinedReplicas := make([]string, 0)
 	err := component.DeleteReplicasStatus(r.protoITS, deleteReplicas, func(s component.ReplicaStatus) {
 		// has no member join defined or has joined successfully
-		if s.Provisioned && (s.MemberJoined == nil || *s.MemberJoined) {
+		if s.Provisioned && (component.IsMemberJoinLeaveStatusDisabled() || s.MemberJoined == nil || *s.MemberJoined) {
 			joinedReplicas = append(joinedReplicas, s.Name)
 		}
 	})
@@ -623,7 +637,7 @@ func (r *componentWorkloadOps) scaleIn() error {
 }
 
 func (r *componentWorkloadOps) leaveMember4ScaleIn(deleteReplicas, joinedReplicas []string) error {
-	pods, err := component.ListOwnedPods(r.reqCtx.Ctx, r.cli,
+	pods, err := component.ListOwnedPodsWithMultiClient(r.reqCtx.Ctx, r.federalClient, r.cli,
 		r.synthesizeComp.Namespace, r.synthesizeComp.ClusterName, r.synthesizeComp.Name)
 	if err != nil {
 		return err
@@ -638,13 +652,14 @@ func (r *componentWorkloadOps) leaveMember4ScaleIn(deleteReplicas, joinedReplica
 	leaveErrors := make([]error, 0)
 	for _, pod := range pods {
 		if deleteReplicasSet.Has(pod.Name) {
-			if joinedReplicasSet.Has(pod.Name) { // else: hasn't joined yet, no need to leave
-				if hasMemberLeaveDefined {
-					if err = r.leaveMemberForPod(pod, pods); err != nil {
-						leaveErrors = append(leaveErrors, err)
-					}
-					joinedReplicasSet.Delete(pod.Name)
+			// When status tracking is disabled, always attempt leave if defined
+			// When status tracking is enabled, only leave if the pod has joined
+			shouldLeave := component.IsMemberJoinLeaveStatusDisabled() || joinedReplicasSet.Has(pod.Name)
+			if shouldLeave && hasMemberLeaveDefined {
+				if err = r.leaveMemberForPod(pod, pods); err != nil {
+					leaveErrors = append(leaveErrors, err)
 				}
+				joinedReplicasSet.Delete(pod.Name)
 			}
 			deleteReplicasSet.Delete(pod.Name)
 		}
@@ -762,6 +777,8 @@ func (r *componentWorkloadOps) scaleOut() error {
 		return err
 	}
 
+	fmt.Printf("[scaleOut] Component: %s, newReplicas: %v, hasMemberJoinDefined: %v, hasDataActionDefined: %v\n",
+		r.synthesizeComp.Name, newReplicas, hasMemberJoinDefined, hasDataActionDefined)
 	return component.NewReplicasStatus(r.protoITS, newReplicas, hasMemberJoinDefined, hasDataActionDefined)
 }
 
@@ -800,8 +817,6 @@ func (r *componentWorkloadOps) joinMember4ScaleOut() error {
 		return err
 	}
 
-	fmt.Printf("[MemberJoin-DEBUG] joinMember4ScaleOut: found %d pods\n", len(pods))
-
 	joinErrors := make([]error, 0)
 	if err = component.UpdateReplicasStatusFunc(r.protoITS, func(replicas *component.ReplicasStatus) error {
 		for _, pod := range pods {
@@ -809,15 +824,14 @@ func (r *componentWorkloadOps) joinMember4ScaleOut() error {
 				return r.Name == pod.Name
 			})
 			if i < 0 {
-				fmt.Printf("[MemberJoin-DEBUG] Pod %s not found in replicas status\n", pod.Name)
 				continue // the pod is not in the replicas status?
 			}
 
 			status := replicas.Status[i]
-			
-			fmt.Printf("[MemberJoin-DEBUG] Pod %s: MemberJoined=%v\n", pod.Name, 
+
+			fmt.Printf("[MemberJoin-DEBUG] Pod %s: MemberJoined=%v\n", pod.Name,
 				status.MemberJoined != nil && *status.MemberJoined)
-				
+
 			if status.MemberJoined == nil || *status.MemberJoined {
 				continue // no need to join or already joined
 			}
@@ -825,7 +839,7 @@ func (r *componentWorkloadOps) joinMember4ScaleOut() error {
 			// TODO: should wait for the data to be loaded before joining the member?
 
 			fmt.Printf("[MemberJoin-DEBUG] Attempting memberJoin for pod %s\n", pod.Name)
-			
+
 			if err := r.joinMemberForPod(pod, pods); err != nil {
 				fmt.Printf("[MemberJoin-DEBUG] MemberJoin failed for pod %s: %v\n", pod.Name, err)
 				joinErrors = append(joinErrors, fmt.Errorf("pod %s: %w", pod.Name, err))
@@ -857,18 +871,18 @@ func (r *componentWorkloadOps) joinMember4ScaleOut() error {
 
 func (r *componentWorkloadOps) joinMemberForPod(pod *corev1.Pod, pods []*corev1.Pod) error {
 	synthesizedComp := r.synthesizeComp
-	
+
 	fmt.Printf("[MemberJoin-DEBUG] joinMemberForPod: creating lifecycle for pod %s\n", pod.Name)
-	
+
 	lfa, err := lifecycle.New(synthesizedComp.Namespace, synthesizedComp.ClusterName, synthesizedComp.Name,
 		synthesizedComp.LifecycleActions, synthesizedComp.TemplateVars, pod, pods...)
 	if err != nil {
 		fmt.Printf("[MemberJoin-DEBUG] lifecycle.New failed: %v\n", err)
 		return err
 	}
-	
+
 	fmt.Printf("[MemberJoin-DEBUG] calling lfa.MemberJoin for pod %s\n", pod.Name)
-	
+
 	if err = lfa.MemberJoin(r.reqCtx.Ctx, r.cli, nil); err != nil {
 		if !errors.Is(err, lifecycle.ErrActionNotDefined) {
 			fmt.Printf("[MemberJoin-DEBUG] MemberJoin failed for pod %s: %v\n", pod.Name, err)
@@ -876,7 +890,7 @@ func (r *componentWorkloadOps) joinMemberForPod(pod *corev1.Pod, pods []*corev1.
 		}
 		fmt.Printf("[MemberJoin-DEBUG] MemberJoin not defined for pod %s\n", pod.Name)
 	}
-	
+
 	fmt.Printf("[MemberJoin-DEBUG] MemberJoin completed successfully for pod %s\n", pod.Name)
 	r.reqCtx.Log.Info("succeed to join member for pod", "pod", pod.Name)
 	return nil
@@ -1123,6 +1137,7 @@ func buildInstanceSetPlacementAnnotation(comp *appsv1.Component, its *workloads.
 
 func newComponentWorkloadOps(reqCtx intctrlutil.RequestCtx,
 	cli client.Client,
+	federalClient client.Client,
 	synthesizeComp *component.SynthesizedComponent,
 	comp *appsv1.Component,
 	runningITS *workloads.InstanceSet,
@@ -1138,6 +1153,7 @@ func newComponentWorkloadOps(reqCtx intctrlutil.RequestCtx,
 	}
 	return &componentWorkloadOps{
 		cli:                   cli,
+		federalClient:         federalClient,
 		reqCtx:                reqCtx,
 		component:             comp,
 		synthesizeComp:        synthesizeComp,

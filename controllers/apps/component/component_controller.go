@@ -49,8 +49,9 @@ import (
 // ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
 	client.Client
-	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
+	FederalClient client.Client
+	Scheme        *runtime.Scheme
+	Recorder      record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=apps.kubeblocks.io,resources=components,verbs=get;list;watch;create;update;patch;delete
@@ -166,7 +167,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// handle restore before workloads transform
 			&componentRestoreTransformer{Client: r.Client},
 			// handle the component workload
-			&componentWorkloadTransformer{Client: r.Client},
+			&componentWorkloadTransformer{Client: r.Client, FederalClient: r.FederalClient},
 			// handle RBAC for component workloads
 			&componentRBACTransformer{},
 			// reconfigure config/script templates

@@ -91,6 +91,15 @@ spec:
             {{- if .Values.userAgent }}
             - "--user-agent={{ .Values.userAgent }}"
             {{- end }}
+            {{- if .Values.additionalKubeConfig.enabled }}
+            - "--additional-kubeconfig-enabled={{ .Values.additionalKubeConfig.enabled }}"
+            {{- end }}
+            {{- if .Values.additionalKubeConfig.secretName }}
+            - "--additional-kubeconfig-secret-name={{ .Values.additionalKubeConfig.secretName }}"
+            {{- end }}
+            {{- if .Values.additionalKubeConfig.context }}
+            - "--additional-kubeconfig-context={{ .Values.additionalKubeConfig.context }}"
+            {{- end }}
           env:
             - name: CM_NAMESPACE
               value: {{ .Release.Namespace }}
