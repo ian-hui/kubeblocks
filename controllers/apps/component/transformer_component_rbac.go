@@ -21,6 +21,7 @@ package component
 
 import (
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -238,7 +239,7 @@ func createOrUpdateRoleBinding(transCtx *componentTransformContext,
 
 func isLifecycleActionsEnabled(compDef *appsv1.ComponentDefinition) bool {
 	// If member join/leave status tracking is disabled, don't create RBAC resources for lifecycle actions
-	if viper.GetBool(constant.DisableMemberJoinLeaveStatusFlag) {
+	if viper.GetBool(strings.ReplaceAll(constant.DisableMemberJoinLeaveStatusFlag, "-", "_")) {
 		return false
 	}
 	return compDef.Spec.LifecycleActions != nil

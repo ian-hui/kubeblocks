@@ -138,18 +138,18 @@ multiCluster:
   # Configure the contexts to be disabled.
   contextsDisabled:
 
-## Specify the configuration for additional kubeconfig used by listOwnedPods.
+## Specify the configuration for federal kubeconfig used to access sub-cluster pods.
 ##
-## @param additionalKubeConfig.secretName
-## @param additionalKubeConfig.enabled
-additionalKubeConfig:
-  # Enable additional kubeconfig for listOwnedPods
+## @param federalKubeConfig.secretName
+## @param federalKubeConfig.enabled
+federalKubeConfig:
+  # Enable federal kubeconfig for accessing sub-cluster pods
   enabled: false
-  # Secret name containing the additional kubeconfig. The config content should be in the item with the key kubeconfig.
+  # Secret name containing the federal kubeconfig. The config content should be in the item with the key kubeconfig.
   secretName: ""
   # The namespace where the secret is located.
   secretNamespace: ""
-  # The context name to use from the additional kubeconfig.
+  # The context name to use from the federal kubeconfig.
   context: ""
 
 leaderElectId: ""
@@ -601,6 +601,12 @@ featureGates:
   componentReplicasAnnotation:
     enabled: true
   inPlacePodVerticalScaling:
+    enabled: false
+  ## @param featureGates.disableMemberJoinLeaveStatus.enabled
+  ## Disable member join/leave status tracking for component scaling operations.
+  ## When enabled, hooks must handle idempotency and lifecycle actions will
+  ## execute directly without status tracking annotations.
+  disableMemberJoinLeaveStatus:
     enabled: false
 
 userAgent: kubeblocks
