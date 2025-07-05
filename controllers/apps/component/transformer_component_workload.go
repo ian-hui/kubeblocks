@@ -665,7 +665,8 @@ func (r *componentWorkloadOps) leaveMember4ScaleIn(deleteReplicas, joinedReplica
 		}
 	}
 
-	if hasMemberLeaveDefined && len(joinedReplicasSet) > 0 {
+	// no need to join if has member-leave action defined
+	if hasMemberLeaveDefined && len(deleteReplicasSet) > 0 {
 		leaveErrors = append(leaveErrors,
 			fmt.Errorf("some replicas have joined but not leaved since the Pod object is not exist: %v", sets.List(joinedReplicasSet)))
 	}
@@ -829,22 +830,15 @@ func (r *componentWorkloadOps) joinMember4ScaleOut() error {
 
 			status := replicas.Status[i]
 
-			fmt.Printf("[MemberJoin-DEBUG] Pod %s: MemberJoined=%v\n", pod.Name,
-				status.MemberJoined != nil && *status.MemberJoined)
-
 			if status.MemberJoined == nil || *status.MemberJoined {
 				continue // no need to join or already joined
 			}
 
 			// TODO: should wait for the data to be loaded before joining the member?
 
-			fmt.Printf("[MemberJoin-DEBUG] Attempting memberJoin for pod %s\n", pod.Name)
-
 			if err := r.joinMemberForPod(pod, pods); err != nil {
-				fmt.Printf("[MemberJoin-DEBUG] MemberJoin failed for pod %s: %v\n", pod.Name, err)
 				joinErrors = append(joinErrors, fmt.Errorf("pod %s: %w", pod.Name, err))
 			} else {
-				fmt.Printf("[MemberJoin-DEBUG] MemberJoin succeeded for pod %s\n", pod.Name)
 				replicas.Status[i].MemberJoined = ptr.To(true)
 			}
 		}
@@ -872,26 +866,18 @@ func (r *componentWorkloadOps) joinMember4ScaleOut() error {
 func (r *componentWorkloadOps) joinMemberForPod(pod *corev1.Pod, pods []*corev1.Pod) error {
 	synthesizedComp := r.synthesizeComp
 
-	fmt.Printf("[MemberJoin-DEBUG] joinMemberForPod: creating lifecycle for pod %s\n", pod.Name)
-
 	lfa, err := lifecycle.New(synthesizedComp.Namespace, synthesizedComp.ClusterName, synthesizedComp.Name,
 		synthesizedComp.LifecycleActions, synthesizedComp.TemplateVars, pod, pods...)
 	if err != nil {
-		fmt.Printf("[MemberJoin-DEBUG] lifecycle.New failed: %v\n", err)
 		return err
 	}
 
-	fmt.Printf("[MemberJoin-DEBUG] calling lfa.MemberJoin for pod %s\n", pod.Name)
-
 	if err = lfa.MemberJoin(r.reqCtx.Ctx, r.cli, nil); err != nil {
 		if !errors.Is(err, lifecycle.ErrActionNotDefined) {
-			fmt.Printf("[MemberJoin-DEBUG] MemberJoin failed for pod %s: %v\n", pod.Name, err)
 			return err
 		}
-		fmt.Printf("[MemberJoin-DEBUG] MemberJoin not defined for pod %s\n", pod.Name)
 	}
 
-	fmt.Printf("[MemberJoin-DEBUG] MemberJoin completed successfully for pod %s\n", pod.Name)
 	r.reqCtx.Log.Info("succeed to join member for pod", "pod", pod.Name)
 	return nil
 }

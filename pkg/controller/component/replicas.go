@@ -68,7 +68,7 @@ type ReplicaStatus struct {
 
 // IsMemberJoinLeaveStatusDisabled checks if member join/leave status tracking is disabled
 func IsMemberJoinLeaveStatusDisabled() bool {
-	disabled := viper.GetBool(constant.DisableMemberJoinLeaveStatusFlag)
+	disabled := viper.GetBool(strings.ReplaceAll(constant.DisableMemberJoinLeaveStatusFlag, "-", "_"))
 	return disabled
 }
 
@@ -94,7 +94,7 @@ func NewReplicasStatus(its *workloads.InstanceSet, replicas []string, hasMemberJ
 	// If status tracking is disabled and no data action is needed, skip status updates entirely
 	fmt.Printf("[NewReplicasStatus] Component: %s, isMemberJoinLeaveStatusDisabled: %v, hasDataAction: %v, hasMemberJoin: %v, replicas: %v\n",
 		its.Name, IsMemberJoinLeaveStatusDisabled(), hasDataAction, hasMemberJoin, replicas)
-	if IsMemberJoinLeaveStatusDisabled() {
+	if IsMemberJoinLeaveStatusDisabled() && !hasDataAction {
 		fmt.Printf("[NewReplicasStatus] SKIPPING: member join/leave status tracking is disabled and no data action is needed, skip status updates entirely\n")
 		return nil
 	}

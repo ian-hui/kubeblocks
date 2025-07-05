@@ -42,8 +42,7 @@ import (
 func ListOwnedPodsWithMultiClient(ctx context.Context, federalClient client.Reader, cli client.Reader, namespace, clusterName, compName string,
 	opts ...client.ListOption) ([]*corev1.Pod, error) {
 	if federalClient != nil {
-		fmt.Println("its fed client is not nil, use it")
-		// Use the full client.Client functionality
+		// Use the federal client if it's available
 		return ListOwnedPodsWithFederal(ctx, federalClient, namespace, clusterName, compName)
 	} else {
 		// Fallback to reader-only client

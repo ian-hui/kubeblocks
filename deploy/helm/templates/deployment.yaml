@@ -91,14 +91,20 @@ spec:
             {{- if .Values.userAgent }}
             - "--user-agent={{ .Values.userAgent }}"
             {{- end }}
-            {{- if .Values.additionalKubeConfig.enabled }}
-            - "--additional-kubeconfig-enabled={{ .Values.additionalKubeConfig.enabled }}"
+            {{- if .Values.federalKubeConfig.enabled }}
+            - "--additional-kubeconfig-enabled={{ .Values.federalKubeConfig.enabled }}"
             {{- end }}
-            {{- if .Values.additionalKubeConfig.secretName }}
-            - "--additional-kubeconfig-secret-name={{ .Values.additionalKubeConfig.secretName }}"
+            {{- if .Values.federalKubeConfig.secretName }}
+            - "--additional-kubeconfig-secret-name={{ .Values.federalKubeConfig.secretName }}"
             {{- end }}
-            {{- if .Values.additionalKubeConfig.context }}
-            - "--additional-kubeconfig-context={{ .Values.additionalKubeConfig.context }}"
+            {{- if .Values.federalKubeConfig.secretNamespace }}
+            - "--additional-kubeconfig-secret-namespace={{ .Values.federalKubeConfig.secretNamespace }}"
+            {{- end }}
+            {{- if .Values.federalKubeConfig.context }}
+            - "--additional-kubeconfig-context={{ .Values.federalKubeConfig.context }}"
+            {{- end }}
+            {{- if .Values.featureGates.disableMemberJoinLeaveStatus.enabled }}
+            - "--disable-member-join-leave-status=true"
             {{- end }}
           env:
             - name: CM_NAMESPACE

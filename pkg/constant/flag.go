@@ -23,7 +23,7 @@ const (
 	EnableRBACManager = "EnableRBACManager"
 
 	ManagedNamespacesFlag            = "managed-namespaces"
-	DisableMemberJoinLeaveStatusFlag = "disable_member_join_leave_status"
+	DisableMemberJoinLeaveStatusFlag = "disable-member-join-leave-status"
 )
 
 const (
