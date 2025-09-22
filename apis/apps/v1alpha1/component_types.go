@@ -21,6 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	v1 "github.com/apecloud/kubeblocks/apis/apps/v1"
 	workloads "github.com/apecloud/kubeblocks/apis/workloads/v1alpha1"
 )
 
@@ -109,7 +110,7 @@ type ComponentSpec struct {
 	// by clients.
 	//
 	// +optional
-	Services []ComponentService `json:"services,omitempty"`
+	Services []v1.ComponentService `json:"services,omitempty"`
 
 	// Overrides system accounts defined in referenced ComponentDefinition.
 	//
@@ -168,7 +169,7 @@ type ComponentSpec struct {
 	// Template.
 	//
 	// +optional
-	InstanceUpdateStrategy *InstanceUpdateStrategy `json:"instanceUpdateStrategy,omitempty"`
+	InstanceUpdateStrategy *v1.InstanceUpdateStrategy `json:"instanceUpdateStrategy,omitempty"`
 
 	// Controls the concurrency of pods during initial scale up, when replacing pods on nodes,
 	// or when scaling down. It only used when `PodManagementPolicy` is set to `Parallel`.
