@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 
 	appsv1 "github.com/apecloud/kubeblocks/apis/apps/v1"
+	v1 "github.com/apecloud/kubeblocks/apis/workloads/v1"
 )
 
 const clusterUIDKey = "apps.kubeblocks.io/cluster-uid"
@@ -114,8 +115,8 @@ func (r *Component) incrementConvertFrom(srcRaw metav1.Object, ic incrementChang
 }
 
 type componentConverter struct {
-	EnabledLogs            []string                `json:"enabledLogs,omitempty"`
-	Affinity               *Affinity               `json:"affinity,omitempty"`
-	Tolerations            []corev1.Toleration     `json:"tolerations,omitempty"`
-	InstanceUpdateStrategy *InstanceUpdateStrategy `json:"instanceUpdateStrategy,omitempty"`
+	EnabledLogs            []string                   `json:"enabledLogs,omitempty"`
+	Affinity               *Affinity                  `json:"affinity,omitempty"`
+	Tolerations            []corev1.Toleration        `json:"tolerations,omitempty"`
+	InstanceUpdateStrategy *v1.InstanceUpdateStrategy `json:"instanceUpdateStrategy,omitempty"`
 }

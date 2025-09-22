@@ -14,22 +14,205 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package v1alpha1 contains API Schema definitions for the apps v1alpha1 API group
 package v1alpha1
 
 import (
-	"errors"
-
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+)
+
+// PodSelectionPolicy pod selection strategy.
+// +enum
+// +kubebuilder:validation:Enum={All,Any}
+type PodSelectionPolicy string
+
+const (
+	All PodSelectionPolicy = "All"
+	Any PodSelectionPolicy = "Any"
+)
+
+// OpsWorkloadType policy after action failure.
+// +enum
+// +kubebuilder:validation:Enum={Job,Pod}
+type OpsWorkloadType string
+
+const (
+	PodWorkload OpsWorkloadType = "Pod"
+	JobWorkload OpsWorkloadType = "Job"
+)
+
+// OpsPhase defines opsRequest phase.
+// +enum
+// +kubebuilder:validation:Enum={Pending,Creating,Running,Cancelling,Cancelled,Aborted,Failed,Succeed}
+type OpsPhase string
+
+const (
+	OpsPendingPhase    OpsPhase = "Pending"
+	OpsCreatingPhase   OpsPhase = "Creating"
+	OpsRunningPhase    OpsPhase = "Running"
+	OpsCancellingPhase OpsPhase = "Cancelling"
+	OpsSucceedPhase    OpsPhase = "Succeed"
+	OpsCancelledPhase  OpsPhase = "Cancelled"
+	OpsFailedPhase     OpsPhase = "Failed"
+	OpsAbortedPhase    OpsPhase = "Aborted"
+)
+
+// Phase represents the current status of the ClusterDefinition CR.
+//
+// +enum
+// +kubebuilder:validation:Enum={Available,Unavailable}
+type Phase string
+
+const (
+	// AvailablePhase indicates that the object is in an available state.
+	AvailablePhase Phase = "Available"
+
+	// UnavailablePhase indicates that the object is in an unavailable state.
+	UnavailablePhase Phase = "Unavailable"
+)
+
+// OpsType defines operation types.
+// +enum
+// +kubebuilder:validation:Enum={Upgrade,VerticalScaling,VolumeExpansion,HorizontalScaling,Restart,Reconfiguring,Start,Stop,Expose,Switchover,Backup,Restore,RebuildInstance,Custom}
+type OpsType string
+
+const (
+	VerticalScalingType   OpsType = "VerticalScaling"
+	HorizontalScalingType OpsType = "HorizontalScaling"
+	VolumeExpansionType   OpsType = "VolumeExpansion"
+	UpgradeType           OpsType = "Upgrade"
+	ReconfiguringType     OpsType = "Reconfiguring"
+	SwitchoverType        OpsType = "Switchover"
+	RestartType           OpsType = "Restart" // RestartType the restart operation is a special case of the rolling update operation.
+	StopType              OpsType = "Stop"    // StopType the stop operation will delete all pods in a cluster concurrently.
+	StartType             OpsType = "Start"   // StartType the start operation will start the pods which is deleted in stop operation.
+	ExposeType            OpsType = "Expose"
+	BackupType            OpsType = "Backup"
+	RestoreType           OpsType = "Restore"
+	RebuildInstanceType   OpsType = "RebuildInstance" // RebuildInstance rebuilding an instance is very useful when a node is offline or an instance is unrecoverable.
+	CustomType            OpsType = "Custom"          // use opsDefinition
+)
+
+// ProgressStatus defines the status of the opsRequest progress.
+// +enum
+// +kubebuilder:validation:Enum={Processing,Pending,Failed,Succeed}
+type ProgressStatus string
+
+const (
+	PendingProgressStatus    ProgressStatus = "Pending"
+	ProcessingProgressStatus ProgressStatus = "Processing"
+	FailedProgressStatus     ProgressStatus = "Failed"
+	SucceedProgressStatus    ProgressStatus = "Succeed"
+)
+
+// ActionTaskStatus defines the status of the task.
+// +enum
+// +kubebuilder:validation:Enum={Processing,Failed,Succeed}
+type ActionTaskStatus string
+
+const (
+	ProcessingActionTaskStatus ActionTaskStatus = "Processing"
+	FailedActionTaskStatus     ActionTaskStatus = "Failed"
+	SucceedActionTaskStatus    ActionTaskStatus = "Succeed"
+)
+
+// ClusterPhase defines the phase of the cluster.
+// +enum
+// +kubebuilder:validation:Enum={Creating,Running,Updating,Stopping,Stopped,Deleting,Failed,Abnormal}
+type ClusterPhase string
+
+const (
+	// CreatingClusterPhase represents all components are in `Creating` phase.
+	CreatingClusterPhase ClusterPhase = "Creating"
+
+	// RunningClusterPhase represents all components are in `Running` phase, indicates that the cluster is functioning properly.
+	RunningClusterPhase ClusterPhase = "Running"
+
+	// UpdatingClusterPhase represents all components are in `Creating`, `Running` or `Updating` phase, and at least one
+	// component is in `Creating` or `Updating` phase, indicates that the cluster is undergoing an update.
+	UpdatingClusterPhase ClusterPhase = "Updating"
+
+	// StoppingClusterPhase represents at least one component is in `Stopping` phase, indicates that the cluster is in
+	// the process of stopping.
+	StoppingClusterPhase ClusterPhase = "Stopping"
+
+	// StoppedClusterPhase represents all components are in `Stopped` phase, indicates that the cluster has stopped and
+	// is not providing any functionality.
+	StoppedClusterPhase ClusterPhase = "Stopped"
+
+	// DeletingClusterPhase indicates the cluster is being deleted.
+	DeletingClusterPhase ClusterPhase = "Deleting"
+
+	// FailedClusterPhase represents all components are in `Failed` phase, indicates that the cluster is unavailable.
+	FailedClusterPhase ClusterPhase = "Failed"
+
+	// AbnormalClusterPhase represents some components are in `Failed` phase, indicates that the cluster is in
+	// a fragile state and troubleshooting is required.
+	AbnormalClusterPhase ClusterPhase = "Abnormal"
+)
+
+type OpsRequestBehaviour struct {
+	FromClusterPhases []ClusterPhase
+	ToClusterPhase    ClusterPhase
+}
+
+type OpsRecorder struct {
+	// name OpsRequest name
+	Name string `json:"name"`
+	// opsRequest type
+	Type OpsType `json:"type"`
+	// indicates whether the current opsRequest is in the queue
+	InQueue bool `json:"inQueue,omitempty"`
+	// indicates that the operation is queued for execution within its own-type scope.
+	QueueBySelf bool `json:"queueBySelf,omitempty"`
+}
+
+// ClusterComponentPhase defines the phase of a cluster component as represented in cluster.status.components.phase field.
+//
+// +enum
+// +kubebuilder:validation:Enum={Creating,Running,Updating,Stopping,Stopped,Deleting,Failed,Abnormal}
+type ClusterComponentPhase string
+
+const (
+	// CreatingClusterCompPhase indicates the component is being created.
+	CreatingClusterCompPhase ClusterComponentPhase = "Creating"
+
+	// RunningClusterCompPhase indicates the component has more than zero replicas, and all pods are up-to-date and
+	// in a 'Running' state.
+	RunningClusterCompPhase ClusterComponentPhase = "Running"
+
+	// UpdatingClusterCompPhase indicates the component has more than zero replicas, and there are no failed pods,
+	// it is currently being updated.
+	UpdatingClusterCompPhase ClusterComponentPhase = "Updating"
+
+	// StoppingClusterCompPhase indicates the component has zero replicas, and there are pods that are terminating.
+	StoppingClusterCompPhase ClusterComponentPhase = "Stopping"
+
+	// StoppedClusterCompPhase indicates the component has zero replicas, and all pods have been deleted.
+	StoppedClusterCompPhase ClusterComponentPhase = "Stopped"
+
+	// DeletingClusterCompPhase indicates the component is currently being deleted.
+	DeletingClusterCompPhase ClusterComponentPhase = "Deleting"
+
+	// FailedClusterCompPhase indicates the component has more than zero replicas, but there are some failed pods.
+	// The component is not functioning.
+	FailedClusterCompPhase ClusterComponentPhase = "Failed"
+
+	// AbnormalClusterCompPhase indicates the component has more than zero replicas, but there are some failed pods.
+	// The component is functioning, but it is in a fragile state.
+	AbnormalClusterCompPhase ClusterComponentPhase = "Abnormal"
 )
 
 const (
 	APIVersion            = "apps.kubeblocks.io/v1alpha1"
+	ClusterVersionKind    = "ClusterVersion"
 	ClusterDefinitionKind = "ClusterDefinition"
 	ClusterKind           = "Cluster"
 	ComponentKind         = "Component"
+	OpsRequestKind        = "OpsRequestKind"
 
 	defaultInstanceTemplateReplicas = 1
 )
@@ -44,14 +227,13 @@ type ComponentTemplateSpec struct {
 
 	// Specifies the name of the referenced configuration template ConfigMap object.
 	//
+	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MaxLength=63
 	// +kubebuilder:validation:Pattern:=`^[a-z0-9]([a-z0-9\.\-]*[a-z0-9])?$`
-	// +optional
 	TemplateRef string `json:"templateRef"`
 
 	// Specifies the namespace of the referenced configuration template ConfigMap object.
 	// An empty namespace is equivalent to the "default" namespace.
-	//
 	// +kubebuilder:validation:MaxLength=63
 	// +kubebuilder:validation:Pattern:=`^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$`
 	// +kubebuilder:default="default"
@@ -61,10 +243,9 @@ type ComponentTemplateSpec struct {
 	// Refers to the volume name of PodTemplate. The configuration file produced through the configuration
 	// template will be mounted to the corresponding volume. Must be a DNS_LABEL name.
 	// The volume name must be defined in podSpec.containers[*].volumeMounts.
-	//
+	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MaxLength=63
 	// +kubebuilder:validation:Pattern:=`^[a-z]([a-z0-9\-]*[a-z0-9])?$`
-	// +optional
 	VolumeName string `json:"volumeName"`
 
 	// The operator attempts to set default file permissions for scripts (0555) and configurations (0444).
@@ -198,22 +379,16 @@ type ComponentConfigSpec struct {
 	// +listType=set
 	// +optional
 	ReRenderResourceTypes []RerenderResourceType `json:"reRenderResourceTypes,omitempty"`
-
-	// Whether to store the final rendered parameters as a secret.
-	//
-	// +optional
-	AsSecret *bool `json:"asSecret,omitempty"`
 }
 
 // RerenderResourceType defines the resource requirements for a component.
 // +enum
-// +kubebuilder:validation:Enum={vscale,hscale,tls,shardingHScale}
+// +kubebuilder:validation:Enum={vscale,hscale,tls}
 type RerenderResourceType string
 
 const (
-	ComponentVScaleType         RerenderResourceType = "vscale"
-	ComponentHScaleType         RerenderResourceType = "hscale"
-	ShardingComponentHScaleType RerenderResourceType = "shardingHScale"
+	ComponentVScaleType RerenderResourceType = "vscale"
+	ComponentHScaleType RerenderResourceType = "hscale"
 )
 
 // MergedPolicy defines how to merge external imported templates into component templates.
@@ -228,78 +403,6 @@ const (
 	NoneMergePolicy MergedPolicy = "none"
 )
 
-// ClusterPhase defines the phase of the Cluster within the .status.phase field.
-//
-// +enum
-// +kubebuilder:validation:Enum={Creating,Running,Updating,Stopping,Stopped,Deleting,Failed,Abnormal}
-type ClusterPhase string
-
-const (
-	// CreatingClusterPhase represents all components are in `Creating` phase.
-	CreatingClusterPhase ClusterPhase = "Creating"
-
-	// RunningClusterPhase represents all components are in `Running` phase, indicates that the cluster is functioning properly.
-	RunningClusterPhase ClusterPhase = "Running"
-
-	// UpdatingClusterPhase represents all components are in `Creating`, `Running` or `Updating` phase, and at least one
-	// component is in `Creating` or `Updating` phase, indicates that the cluster is undergoing an update.
-	UpdatingClusterPhase ClusterPhase = "Updating"
-
-	// StoppingClusterPhase represents at least one component is in `Stopping` phase, indicates that the cluster is in
-	// the process of stopping.
-	StoppingClusterPhase ClusterPhase = "Stopping"
-
-	// StoppedClusterPhase represents all components are in `Stopped` phase, indicates that the cluster has stopped and
-	// is not providing any functionality.
-	StoppedClusterPhase ClusterPhase = "Stopped"
-
-	// DeletingClusterPhase indicates the cluster is being deleted.
-	DeletingClusterPhase ClusterPhase = "Deleting"
-
-	// FailedClusterPhase represents all components are in `Failed` phase, indicates that the cluster is unavailable.
-	FailedClusterPhase ClusterPhase = "Failed"
-
-	// AbnormalClusterPhase represents some components are in `Failed` or `Abnormal` phase, indicates that the cluster
-	// is in a fragile state and troubleshooting is required.
-	AbnormalClusterPhase ClusterPhase = "Abnormal"
-)
-
-// ClusterComponentPhase defines the phase of a cluster component as represented in cluster.status.components.phase field.
-//
-// +enum
-// +kubebuilder:validation:Enum={Creating,Running,Updating,Stopping,Stopped,Deleting,Failed,Abnormal}
-type ClusterComponentPhase string
-
-const (
-	// CreatingClusterCompPhase indicates the component is being created.
-	CreatingClusterCompPhase ClusterComponentPhase = "Creating"
-
-	// RunningClusterCompPhase indicates the component has more than zero replicas, and all pods are up-to-date and
-	// in a 'Running' state.
-	RunningClusterCompPhase ClusterComponentPhase = "Running"
-
-	// UpdatingClusterCompPhase indicates the component has more than zero replicas, and there are no failed pods,
-	// it is currently being updated.
-	UpdatingClusterCompPhase ClusterComponentPhase = "Updating"
-
-	// StoppingClusterCompPhase indicates the component has zero replicas, and there are pods that are terminating.
-	StoppingClusterCompPhase ClusterComponentPhase = "Stopping"
-
-	// StoppedClusterCompPhase indicates the component has zero replicas, and all pods have been deleted.
-	StoppedClusterCompPhase ClusterComponentPhase = "Stopped"
-
-	// DeletingClusterCompPhase indicates the component is currently being deleted.
-	DeletingClusterCompPhase ClusterComponentPhase = "Deleting"
-
-	// FailedClusterCompPhase indicates the component has more than zero replicas, but there are some failed pods.
-	// The component is not functioning.
-	FailedClusterCompPhase ClusterComponentPhase = "Failed"
-
-	// AbnormalClusterCompPhase indicates the component has more than zero replicas, but there are some failed pods.
-	// The component is functioning, but it is in a fragile state.
-	AbnormalClusterCompPhase ClusterComponentPhase = "Abnormal"
-)
-
 const (
 	// define the cluster condition type
 	ConditionTypeHaltRecovery        = "HaltRecovery"        // ConditionTypeHaltRecovery describe Halt recovery processing stage
@@ -307,20 +410,7 @@ const (
 	ConditionTypeApplyResources      = "ApplyResources"      // ConditionTypeApplyResources the operator start to apply resources to create or change the cluster
 	ConditionTypeReplicasReady       = "ReplicasReady"       // ConditionTypeReplicasReady all pods of components are ready
 	ConditionTypeReady               = "Ready"               // ConditionTypeReady all components are running
-)
-
-// Phase represents the current status of the ClusterDefinition CR.
-//
-// +enum
-// +kubebuilder:validation:Enum={Available,Unavailable}
-type Phase string
-
-const (
-	// AvailablePhase indicates that the object is in an available state.
-	AvailablePhase Phase = "Available"
-
-	// UnavailablePhase indicates that the object is in an unavailable state.
-	UnavailablePhase Phase = "Unavailable"
+	ConditionTypeSwitchoverPrefix    = "Switchover-"         // ConditionTypeSwitchoverPrefix component status condition of switchover
 )
 
 // PodAvailabilityPolicy pod availability strategy.
@@ -333,6 +423,13 @@ const (
 	UnAvailablePolicy      PodAvailabilityPolicy = "UnAvailable"
 	NoneAvailabilityPolicy PodAvailabilityPolicy = "None"
 )
+
+// ComponentResourceKey defines the resource key of component, such as pod/pvc.
+// +enum
+// +kubebuilder:validation:Enum={pods}
+type ComponentResourceKey string
+
+const PodsCompResourceKey ComponentResourceKey = "pods"
 
 // AccessMode defines the modes of access granted to the SVC.
 // The modes can be `None`, `Readonly`, or `ReadWrite`.
@@ -386,24 +483,12 @@ const (
 	BestEffortParallelStrategy UpdateStrategy = "BestEffortParallel"
 )
 
-// InstanceUpdateStrategy indicates the strategy that the InstanceSet
-// controller will use to perform updates.
-type InstanceUpdateStrategy struct {
-	// Partition indicates the number of pods that should be updated during a rolling update.
-	// The remaining pods will remain untouched. This is helpful in defining how many pods
-	// should participate in the update process. The update process will follow the order
-	// of pod names in descending lexicographical (dictionary) order. The default value is
-	// ComponentSpec.Replicas (i.e., update all pods).
-	// +optional
-	Partition *int32 `json:"partition,omitempty"`
-	// The maximum number of pods that can be unavailable during the update.
-	// Value can be an absolute number (ex: 5) or a percentage of desired pods (ex: 10%).
-	// Absolute number is calculated from percentage by rounding up. This can not be 0.
-	// Defaults to 1. The field applies to all pods. That means if there is any unavailable pod,
-	// it will be counted towards MaxUnavailable.
-	// +optional
-	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
+var DefaultLeader = ConsensusMember{
+	Name:       "leader",
+	AccessMode: ReadWrite,
 }
+
+var WorkloadTypes = []string{"Stateless", "Stateful", "Consensus", "Replication"}
 
 // TerminationPolicyType defines termination policy types.
 //
@@ -481,6 +566,36 @@ const (
 	AvailabilityPolicyNone AvailabilityPolicyType = "none"
 )
 
+// KBAccountType is used for bitwise operation.
+type KBAccountType uint8
+
+// System accounts represented in bit.
+const (
+	KBAccountInvalid        KBAccountType = 0
+	KBAccountAdmin                        = 1
+	KBAccountDataprotection               = 1 << 1
+	KBAccountProbe                        = 1 << 2
+	KBAccountMonitor                      = 1 << 3
+	KBAccountReplicator                   = 1 << 4
+	KBAccountMAX                          = KBAccountReplicator // KBAccountMAX indicates the max value of KBAccountType, used for validation.
+)
+
+func (r AccountName) GetAccountID() KBAccountType {
+	switch r {
+	case AdminAccount:
+		return KBAccountAdmin
+	case DataprotectionAccount:
+		return KBAccountDataprotection
+	case ProbeAccount:
+		return KBAccountProbe
+	case MonitorAccount:
+		return KBAccountMonitor
+	case ReplicatorAccount:
+		return KBAccountReplicator
+	}
+	return KBAccountInvalid
+}
+
 // LetterCase defines the available cases to be used in password generation.
 //
 // +enum
@@ -497,6 +612,12 @@ const (
 	// MixedCases represents the use of a mix of both lower and upper case letters.
 	MixedCases LetterCase = "MixedCases"
 )
+
+var webhookMgr *webhookManager
+
+type webhookManager struct {
+	client client.Client
+}
 
 // UpgradePolicy defines the policy of reconfiguring.
 // +enum
@@ -565,6 +686,10 @@ type BaseBackupType string
 // +enum
 // +kubebuilder:validation:Enum={pre,post}
 type BackupStatusUpdateStage string
+
+func RegisterWebhookManager(mgr manager.Manager) {
+	webhookMgr = &webhookManager{mgr.GetClient()}
+}
 
 var (
 	ErrWorkloadTypeIsUnknown   = errors.New("workloadType is unknown")
@@ -734,6 +859,24 @@ type Service struct {
 	// +optional
 	RoleSelector string `json:"roleSelector,omitempty"`
 }
+
+// List of all the built-in variables provided by KubeBlocks.
+// These variables are automatically available when building environment variables for Pods and Actions, as well as
+// rendering templates for config and script. Users can directly use these variables without explicit declaration.
+//
+// Note: Dynamic variables have values that may change at runtime, so exercise caution when using them.
+//
+// TODO: resources.
+// ----------------------------------------------------------------------------
+// | Object    | Attribute | Variable             | Template | Env  | Dynamic |
+// ----------------------------------------------------------------------------
+// | Namespace |           | KB_NAMESPACE         |          |      |         |
+// | Cluster   | Name      | KB_CLUSTER_NAME      |          |      |         |
+// |           | UID       | KB_CLUSTER_UID       |          |      |         |
+// |           | Component | KB_CLUSTER_COMP_NAME |          |      |         |
+// | Component | Name      | KB_COMP_NAME         |          |      |         |
+// |           | Replicas  | KB_COMP_REPLICAS     |          |      |    ✓    |
+// ----------------------------------------------------------------------------
 
 // EnvVar represents a variable present in the env of Pod/Action or the template of config/script.
 type EnvVar struct {
@@ -946,8 +1089,8 @@ type ComponentVars struct {
 	// +optional
 	Replicas *VarOption `json:"replicas,omitempty"`
 
-	// Reference to the pod name list of the component.
-	// and the value will be presented in the following format: name1,name2,...
+	// Reference to the instanceName list of the component.
+	// and the value will be presented in the following format: instanceName1,instanceName2,...
 	//
 	// +optional
 	InstanceNames *VarOption `json:"instanceNames,omitempty"`
@@ -988,12 +1131,6 @@ type ClusterObjectReference struct {
 
 // MultipleClusterObjectOption defines the options for handling multiple cluster objects matched.
 type MultipleClusterObjectOption struct {
-	// RequireAllComponentObjects controls whether all component objects must exist before resolving.
-	// If set to true, resolving will only proceed if all component objects are present.
-	//
-	// +optional
-	RequireAllComponentObjects *bool `json:"requireAllComponentObjects,omitempty"`
-
 	// Define the strategy for handling multiple cluster objects.
 	//
 	// +kubebuilder:validation:Required
@@ -1075,28 +1212,4 @@ type PrometheusScheme string
 const (
 	HTTPProtocol  PrometheusScheme = "http"
 	HTTPSProtocol PrometheusScheme = "https"
-)
-
-// FailurePolicyType specifies the type of failure policy.
-//
-// +enum
-// +kubebuilder:validation:Enum={Ignore,Fail}
-type FailurePolicyType string
-
-const (
-	// FailurePolicyIgnore means that an error will be ignored but logged.
-	FailurePolicyIgnore FailurePolicyType = "Ignore"
-	// FailurePolicyFail means that an error will be reported.
-	FailurePolicyFail FailurePolicyType = "Fail"
-)
-
-const (
-	ReasonReconfigurePersisting    = "ReconfigurePersisting"
-	ReasonReconfigurePersisted     = "ReconfigurePersisted"
-	ReasonReconfigureFailed        = "ReconfigureFailed"
-	ReasonReconfigureRestartFailed = "ReconfigureRestartFailed"
-	ReasonReconfigureRestart       = "ReconfigureRestarted"
-	ReasonReconfigureNoChanged     = "ReconfigureNoChanged"
-	ReasonReconfigureSucceed       = "ReconfigureSucceed"
-	ReasonReconfigureRunning       = "ReconfigureRunning"
 )

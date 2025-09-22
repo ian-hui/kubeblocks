@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	v1 "github.com/apecloud/kubeblocks/apis/apps/v1"
 	dpv1alpha1 "github.com/apecloud/kubeblocks/apis/dataprotection/v1alpha1"
 	workloads "github.com/apecloud/kubeblocks/apis/workloads/v1alpha1"
 	"github.com/apecloud/kubeblocks/pkg/constant"
@@ -144,7 +145,7 @@ type ClusterSpec struct {
 	//
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +optional
-	Services []ClusterService `json:"services,omitempty"`
+	Services []v1.ClusterService `json:"services,omitempty"`
 
 	// Defines a set of node affinity scheduling rules for the Cluster's Pods.
 	// This field helps control the placement of Pods on nodes within the Cluster.
@@ -825,14 +826,14 @@ type ClusterComponentSpec struct {
 	//
 	// +kubebuilder:deprecatedversion:warning="This field has been deprecated since 0.9.0"
 	// +optional
-	UpdateStrategy *UpdateStrategy `json:"updateStrategy,omitempty"`
+	UpdateStrategy *v1.UpdateStrategy `json:"updateStrategy,omitempty"`
 
 	// Indicates the InstanceUpdateStrategy that will be
 	// employed to update Pods in the InstanceSet when a revision is made to
 	// Template.
 	//
 	// +optional
-	InstanceUpdateStrategy *InstanceUpdateStrategy `json:"instanceUpdateStrategy,omitempty"`
+	InstanceUpdateStrategy *v1.InstanceUpdateStrategy `json:"instanceUpdateStrategy,omitempty"`
 
 	// Controls the concurrency of pods during initial scale up, when replacing pods on nodes,
 	// or when scaling down. It only used when `PodManagementPolicy` is set to `Parallel`.
@@ -1084,7 +1085,7 @@ type Affinity struct {
 	//
 	// +kubebuilder:default=Preferred
 	// +optional
-	PodAntiAffinity PodAntiAffinity `json:"podAntiAffinity,omitempty"`
+	PodAntiAffinity corev1.PodAntiAffinity `json:"podAntiAffinity,omitempty"`
 
 	// Represents the key of node labels used to define the topology domain for Pod anti-affinity
 	// and Pod spread constraints.
